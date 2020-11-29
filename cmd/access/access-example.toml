@@ -1,0 +1,25 @@
+
+region="shanghai"
+WsAddr="127.0.0.1:18000"
+TcpPort=18001
+TcpAddr="127.0.0.1:18001"
+LocalDispAddr=":18005"
+LocalDisPort=18005
+ClientRpcAddr =""
+AppId = "App-01"
+
+[Storage]
+    MySQL = "root:123@tcp(192.168.233.3:3306)/nonsense?charset=utf8mb4&parseTime=true"
+    Redis= "192.168.233.3:6379"
+    RedisPasswd= "root"
+[SrvDisc]
+    Addr= "172.25.161.35:8500"
+    ServiceName= "nonsense-conn-server"
+    ID="nonsense-conn-1"
+    Tag= ""
+    Timeout= "5s"
+    CheckInterval= "5s"
+    DeleteDelay= "30s"
+[LogConfig]
+    Level= "debug"
+    Destination= "console"

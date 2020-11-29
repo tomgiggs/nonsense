@@ -1,0 +1,185 @@
+syntax = "proto3";
+import "message.proto";
+option go_package = ".;pb";
+package pb;
+
+message RegisterDeviceReq {
+    int64 app_id = 1; // app_id
+    int32 type = 2; // 设备类型
+    string brand = 3; // 厂商
+    string model = 4; // 机型
+    string system_version = 5; // 系统版本
+    string sdk_version = 6; // sdk版本号
+}
+message RegisterDeviceResp {
+    int32 resultCode =1;
+    int64 device_id = 2; // 设备id
+}
+
+message User {
+    int64 user_id = 1; // 用户id
+    string nickname = 2; // 昵称
+    int32 sex = 3; // 性别
+    string avatar_url = 4; // 头像地址
+    string extra = 5; // 附加字段
+    int64 create_time = 6; // 创建时间
+    int64 update_time = 7; // 更新时间
+}
+
+message AddUserReq {
+    User user = 1; // 用户信息
+}
+message AddUserResp {
+    int32 resultCode =1;
+    int64 userId =2;
+}
+
+message GetUserReq {
+    int64 user_id = 1; // 用户id
+}
+message GetUserResp {
+    int32 resultCode =1;
+    User user = 2; // 用户信息
+}
+
+message SendMessageReq {
+    string message_id = 1; //消息id，避免重复发送
+    ReceiverType receiver_type = 2; // 接收者类型，用于判断消息路由放方式
+    int64 receiver_id = 3; // 用户id或者群组id
+    repeated int64 to_user_ids = 4; // 需要@的用户id列表
+    MessageBody message_body = 5; // 消息体
+    int64 send_time = 6; // 消息发送时间戳，精确到毫秒
+    bool is_persist = 7; // 是否将消息持久化到数据
+}
+message SendMessageResp {
+    int32 resultCode =1;
+}
+
+message Group {
+    int64 group_id = 1; // 群组id
+    string name = 2; // 名称
+    string introduction = 3; // 简介
+    int32 user_mum = 4; // 用户数
+    int32 type = 5; // 群组类型
+    string extra = 6; // 附加字段
+    int64 create_time = 7; // 创建时间
+    int64 update_time = 8; // 更新时间
+}
+
+message CreateGroupReq {
+    Group group = 1;
+}
+message CreateGroupResp {
+    int32 resultCode =1;
+}
+
+message UpdateGroupReq {
+    Group group = 1;
+}
+message UpdateGroupResp {
+    int32 resultCode =1;
+}
+
+message GetGroupReq {
+    int64 group_id = 1;
+}
+message GetGroupResp {
+    int32 resultCode =1;
+    Group group = 2;
+}
+
+message GetUserGroupsReq {
+}
+message GetUserGroupsResp {
+    int32 resultCode =1;
+    repeated Group groups = 2;
+}
+
+// 群组用户
+message GroupUser {
+    int64 group_id = 1; // 群组id
+    int64 user_id = 2; // 用户id
+    string label = 3; // 标签
+    string extra = 4; // 附加属性
+}
+
+message AddGroupMemberReq {
+    GroupUser group_user = 1;
+}
+message AddGroupMemberResp {
+    int32 resultCode =1;
+}
+
+message UpdateGroupMemberReq {
+    GroupUser group_user = 1;
+}
+message UpdateGroupMemberResp {
+    int32 resultCode =1;
+}
+
+message DeleteGroupMemberReq {
+    int64 group_id = 1; // 群组id
+    int64 user_id = 2; // 用户id
+}
+message DeleteGroupMemberResp {
+    int32 resultCode =1;
+}
+
+//--------
+message SignInReq {
+    int64 app_id = 1; // app_id
+    int64 device_id = 2; // 设备id
+    int64 user_id = 3; // 用户id
+    string passwd = 4; // 密码
+    string conn_id = 5; // 服务器id
+    string user_ip = 6; // 用户ip
+}
+message SignInResp {
+    int32 resultCode =1;
+    string Token = 2;
+}
+
+message SyncReq {
+    int64 app_id = 2; // appId
+    int64 user_id = 3; // 用户id
+    int64 device_id = 4; // 设备id
+    int64 seq = 5; // 客户端已经同步的序列号
+}
+message SyncResp {
+    int32 resultCode =1;
+    repeated MessageItem messages = 2; // 消息列表
+}
+
+message MessageACKReq {
+    int64 app_id = 1; // appId
+    int64 user_id = 2; // 用户id
+    int64 group_id = 3; // 群组id
+    string message_id = 4; // 消息id
+    int64 seq = 5; // 设备收到消息的确认号
+    int64 receive_time = 6; // 消息接收时间戳，精确到毫秒
+}
+message MessageACKResp {
+    int32 resultCode =1;
+}
+
+message OfflineReq {
+    int64 app_id = 2; // appId
+    int64 user_id = 3; // 用户id
+    int64 device_id = 4; // 设备id
+}
+message OfflineResp {
+    int32 resultCode =1;
+}
+
+//----------
+// conn.int.proto
+message DeliverMessageReq {
+    int64 user_id = 1; // 用户id
+    MessageItem message = 2; // 数据
+}
+message DeliverMessageResp {
+    int32 resultCode =1;
+}
+
+
+

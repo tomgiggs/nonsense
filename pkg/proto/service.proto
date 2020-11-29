@@ -1,0 +1,52 @@
+syntax = "proto3";
+//import "message.proto";
+import "api.proto";
+package pb;
+option go_package = ".;pb";
+
+//客户端服务
+service LogicClientExt {
+    //  登录
+    rpc SignIn (SignInReq) returns (SignInResp);
+    //  消息同步
+    rpc Sync (SyncReq) returns (SyncResp);
+    //  设备收到消息回执
+    rpc MessageACK (MessageACKReq) returns (MessageACKResp);
+    //  设备离线
+    rpc Offline (OfflineReq) returns (OfflineResp);
+    // 注册设备
+    rpc RegisterDevice (RegisterDeviceReq) returns (RegisterDeviceResp);
+    // 添加用户
+    rpc AddUser (AddUserReq) returns (AddUserResp);
+    // 获取用户信息
+    rpc GetUser (GetUserReq) returns (GetUserResp);
+    // 发送消息
+    rpc SendMessage (SendMessageReq) returns (SendMessageResp);
+    // 创建群组
+    rpc CreateGroup (CreateGroupReq) returns (CreateGroupResp);
+    // 更新群组
+    rpc UpdateGroup (UpdateGroupReq) returns (UpdateGroupResp);
+    // 获取群组信息
+    rpc GetGroup (GetGroupReq) returns (GetGroupResp);
+    // 获取用户加入的所有群组
+    rpc GetUserGroups (GetUserGroupsReq) returns (GetUserGroupsResp);
+    // 添加群组成员
+    rpc AddGroupMember (AddGroupMemberReq) returns (AddGroupMemberResp);
+    // 更新群组成员信息
+    rpc UpdateGroupMember (UpdateGroupMemberReq) returns (UpdateGroupMemberResp);
+    // 添加群组成员
+    rpc DeleteGroupMember (DeleteGroupMemberReq) returns (DeleteGroupMemberResp);
+}
+
+//服务端消息转发
+service LogicDispatch {
+    //  消息投递
+    rpc DeliverMessage (DeliverMessageReq) returns (DeliverMessageResp);
+}
+
+service RouteMsg{
+    //  消息投递
+    rpc SendGroupMessage (DeliverMessageReq) returns (DeliverMessageResp);
+}
+
+
