@@ -20,9 +20,11 @@ docker run -p 3306:3306 --name mysql -e MYSQL_ROOT_PASSWORD=123 -d mysql:5.7
 ### 创建mysql库表，并刷入数据
  先刷sql/create.sql，再刷update.sql
 ### 启动
-复制一份internal/config/access-example.toml 配置文件，并做相应修改
-然后执行：
-./access -conf ../../internal/config/access-example.toml启动服务即可，后面为配置文件路径
+复制一份internal/config/access-example.toml 配置文件，并做相应修改然后执行：
+```
+./access -conf ../../internal/config/access-example.toml
+```
+启动服务即可，后面为配置文件路径
 
 
 # 开发
@@ -44,9 +46,11 @@ pbjs -t json-module -w commonjs -o scripts/proto.js pkg/proto/*.proto
 1. 安装dlv工具
 
 go get -u github.com/go-delve/delve/cmd/dlv
+
 2. 然后使用dlv启动服务
 
 dlv --listen=:9004 --headless=true --api-version=2 exec ./access -- start --env debug
+
 3. goland 中添加go remote调试
 
 run/debug configurations--->add--->go remote--->host--->port
@@ -66,6 +70,7 @@ run/debug configurations--->add--->go remote--->host--->port
 - 通用错误码定义与使用/报错信息透传
 - 优化代码，提高健壮性
 - 性能测试
+- http服务端支持用户创建/用户信息修改/群组创建等
 
 # 参考
 项目由 https://github.com/alberliu/gim 魔改而来

@@ -12,6 +12,7 @@ type StorageConf struct {
 	MySQL                  string
 	Redis                string
 	RedisPasswd			   string
+	Name   string
 }
 
 type LogConf struct {

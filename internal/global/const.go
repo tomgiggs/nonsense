@@ -1,11 +1,23 @@
 package global
 
-import "fmt"
+import (
+	"fmt"
+	"time"
+)
 
 var (
 	USER_LOGIN_SERVER_KEY = "nonsense-user-login-server"
 	USER_SERVER_MAP_KEY_PREFIX = "nonsense-user-server-map:"
 	USER_CHANGE_EVENT_OFFLINE = "offline"
+	GROUP_CACHE_KEY = "group:"
+	GROUP_USER_CACHE_KEY = "group_user:"
+	GROUP_CACHE_EXPIRE = time.Minute*5
+	USER_CACHE_KEY = "user:"
+	USER_CACHE_EXPIRE = time.Minute*5
+	APP_CACHE_KEY = "app:"
+	APP_CACHE_EXPIRE = time.Hour
+	DEVICE_CACHE_KEY = "device:"
+	DEVICE_CACHE_EXPIRE = time.Hour
 )
 
 var (

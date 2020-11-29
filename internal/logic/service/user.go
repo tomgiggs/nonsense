@@ -19,20 +19,24 @@ func InitUserService()*UserService{
 }
 // 添加用户
 func (*UserService) Add(user dao.User) (int64,error) {
-	userId, err := dao.UserDaoInst.Add(user)
+	userId, err := dao.Storage.AddUser(&user)
 	if err != nil {
 		return 0,err
 	}
 	if userId == 0 {
 		return 0,common.ErrUserAlreadyExist
 	}
-	err = dao.UserSeqDaoInst.InitUserSeq(user.AppId,user.UserId)
+	userSeq := dao.UserSeq{
+		AppId: user.AppId,
+		UserId: user.UserId,
+	}
+	err = dao.Storage.InitUserSeq(userSeq)
 	return userId,err
 }
 
 // 获取用户信息
 func (*UserService) Get(ctx context.Context, appId, userId int64) (*dao.User, error) {
-	user, err := cache.UserCacheInst.Get(appId, userId)
+	user, err := cache.CacheInst.GetUser(appId, userId)
 	if err != nil {
 		common.Sugar.Errorf("get user error:",err)
 		return nil, err
@@ -41,14 +45,14 @@ func (*UserService) Get(ctx context.Context, appId, userId int64) (*dao.User, er
 		return user, nil
 	}
 
-	user, err = dao.UserDaoInst.Get(appId, userId)
+	user, err = dao.Storage.GetUser(appId, userId)
 	if err != nil {
 		common.Sugar.Errorf("get user error:",err)
 		return nil, err
 	}
 
 	if user != nil {
-		err = cache.UserCacheInst.Set(*user)
+		err = cache.CacheInst.SetUser(*user)
 		if err != nil {
 			return nil, err
 		}
@@ -57,7 +61,7 @@ func (*UserService) Get(ctx context.Context, appId, userId int64) (*dao.User, er
 }
 
 func (*UserService) UpdateUserAckSeq(appId, userId,groupId,ack int64)  error{
-	return dao.UserSeqDaoInst.UpdateAck(appId,userId,groupId,ack)
+	return dao.Storage.UpdateAck(appId,userId,groupId,ack)
 }
 
 func (*UserService) GetUserMaxACK(appId, userId,groupId int64)  *ReqResult{
@@ -65,7 +69,7 @@ func (*UserService) GetUserMaxACK(appId, userId,groupId int64)  *ReqResult{
 		code: global.REQ_RESULT_CODE_OK,
 		data: 200,
 	}
-	ack,_,err := dao.UserSeqDaoInst.GetUserSeq(appId,userId,groupId)
+	ack,err := dao.Storage.GetUserAck(appId,userId,groupId)
 	if err !=nil {
 		result.code = global.REQ_RESULT_CODE_DB_ERR
 	}
@@ -76,12 +80,12 @@ func (*UserService) GetUserMaxACK(appId, userId,groupId int64)  *ReqResult{
 
 // 获取用户信息
 func (*UserService) Update(ctx context.Context, user dao.User) error {
-	err := dao.UserDaoInst.Update(user)
+	err := dao.Storage.UpdateUser(&user)
 	if err != nil {
 		return err
 	}
 
-	err = cache.UserCacheInst.Del(user.AppId, user.UserId)
+	err = cache.CacheInst.DelUser(user.AppId, user.UserId)
 	if err != nil {
 		return err
 	}

@@ -41,7 +41,7 @@ func (self *AuthService) SignIn(ctx context.Context, appId, userId int64, device
 	}
 	//初始化用户seq到缓存
 	var seq int64
-	_,seq,err = dao.UserSeqDaoInst.GetUserSeq(appId,userId,0)
+	seq,err = dao.Storage.GetUserSeq(appId,userId,0)
 	SeqServiceInst.SetUserSeq(appId,userId,seq)
 
 	return tokenStr,nil

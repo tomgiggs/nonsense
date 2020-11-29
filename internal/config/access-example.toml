@@ -12,6 +12,7 @@ AppId = "App-01"
     MySQL = "root:123@tcp(192.168.233.3:3306)/nonsense?charset=utf8mb4&parseTime=true"
     Redis= "192.168.233.3:6379"
     RedisPasswd= "root"
+    Name = "mysql"
 [SrvDisc]
     Addr= "172.25.161.35:8500"
     ServiceName= "nonsense-conn-server"

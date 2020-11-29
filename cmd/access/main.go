@@ -4,6 +4,7 @@ import (
 	"nonsense/internal/config"
 	"nonsense/internal/global"
 	"nonsense/internal/logic/cache"
+	"nonsense/internal/logic/dao"
 	"nonsense/internal/proxy"
 	"nonsense/pkg/common"
 	"nonsense/pkg/storage"
@@ -20,6 +21,8 @@ func main(){
 	}
 	global.AppConfig = conf
 	global.StorageClient=storage.NewDBClient(conf)
+	dao.OpenAdapter(conf)
+	cache.NewRcache(conf)
 
 	//为其他服务器转发消息到客户端
 	go func() {
@@ -39,10 +42,10 @@ func main(){
 		//rpc客户端消息通道
 		proxy.StartClientRpcServer(conf)
 	}()
-	//监听用户连接在哪台服务器
-	go func() {
-		cache.RefreshOnlineUserServer()
-	}()
+	////监听用户连接在哪台服务器
+	//go func() {
+	//	cache.RefreshOnlineUserServer()
+	//}()
 	go func() {
 		// 客户端ws消息通道
 		proxy.StartWSServer(conf)
@@ -62,6 +65,7 @@ func main(){
 		case syscall.SIGQUIT, syscall.SIGTERM, syscall.SIGINT:
 			if global.StorageClient != nil {
 				global.StorageClient.Close()
+				dao.Storage.Close()
 			}
 			if global.TcpServer != nil{
 				global.TcpServer.Stop()

@@ -25,7 +25,7 @@ func (self *MessageService) ListByUserIdAndSeq(ctx context.Context, appId, userI
 			return nil, global.DB_ERROR
 		}
 	}
-	messages, err = dao.MessageDaoInst.ListBySeq( appId, userId, seq)
+	messages, err = dao.Storage.ListMsgBySeq( appId, userId, seq)
 	if err != nil {
 		return nil, err
 	}
@@ -82,7 +82,7 @@ func (self *MessageService) SendToFriend(ctx context.Context, sender dao.Sender,
 
 // 普通群组--写扩散
 func (self *MessageService) SendToGroup(ctx context.Context, sender dao.Sender, req pb.SendMessageReq,isLargeGroup bool) error {
-	isMember, err := cache.GroupUserCacheInst.IsMember(sender.AppId, req.ReceiverId, sender.SenderId)
+	isMember, err := cache.CacheInst.IsGroupMember(sender.AppId, req.ReceiverId, sender.SenderId)
 	if err != nil {
 		return err
 	}
@@ -92,7 +92,7 @@ func (self *MessageService) SendToGroup(ctx context.Context, sender dao.Sender, 
 		return common.ErrNotInGroup
 	}
 
-	users, err := cache.GroupUserCacheInst.Members(sender.AppId, req.ReceiverId)
+	users, err := cache.CacheInst.GetGroupMembers(sender.AppId, req.ReceiverId)
 	if err != nil {
 		return err
 	}
@@ -102,7 +102,8 @@ func (self *MessageService) SendToGroup(ctx context.Context, sender dao.Sender, 
 		if err != nil {
 			return err
 		}
-		err =dao.MessageDaoInst.PB2DB(req,seq,sender)
+		msg := self.PB2DB(req,seq,sender)
+		err =dao.Storage.AddMessage(&msg)
 		if err != nil {
 			return err
 		}
@@ -138,7 +139,8 @@ func (self *MessageService) SendToUser(ctx context.Context, sender dao.Sender, t
 			common.Logger.Error("message route",zap.Any("get user seq error",err))
 			return err
 		}
-		err =dao.MessageDaoInst.PB2DB(req,seq,sender)
+		msg := self.PB2DB(req,seq,sender)
+		err =dao.Storage.AddMessage(&msg)
 		if err != nil {
 			common.Logger.Error("message route",zap.Any("save msg to db error",err))
 			return err
@@ -200,11 +202,34 @@ func (self *MessageService) FindUserConnServer(uid int64) []pb.LogicDispatchClie
 			serverList = append(serverList,srv)
 		}
 	}else {
-		record := cache.GetUserServerFromRedis(uid)
+		record := cache.CacheInst.GetUserServerFromRedis(uid)
 		for k,_ := range record{
 			srv := global.LogicDispatchMap[k]
 			serverList = append(serverList,srv)
 		}
 	}
 	return serverList
+}
+
+func (self *MessageService) PB2DB(req pb.SendMessageReq,seq int64,sender dao.Sender) dao.Message {
+	messageType, messageContent := dao.PBToJsonStr(req.MessageBody)
+	selfMessage := dao.Message{
+		AppId:          sender.AppId,
+		ObjectType:     dao.MessageObjectTypeUser,
+		ObjectId:       req.ReceiverId,
+		MessageId:      req.MessageId,
+		SenderType:     int32(sender.SenderType),
+		SenderId:       sender.SenderId,
+		SenderDeviceId: sender.DeviceId,
+		ReceiverType:   int32(req.ReceiverType),
+		ReceiverId:     req.ReceiverId,
+		ToUserIds:      dao.FormatUserIds(req.ToUserIds),
+		Type:           messageType,
+		Content:        messageContent,
+		Seq:            seq,
+		SendTime:       common.UnunixMilliTime(req.SendTime),
+		Status:         int32(pb.MessageStatus_MS_NORMAL),
+	}
+
+	return selfMessage
 }
