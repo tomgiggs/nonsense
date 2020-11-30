@@ -19,32 +19,17 @@ import (
 )
 
 
-func interceptor(ctx context.Context, method string, req, reply interface{}, cc *grpc.ClientConn, invoker grpc.UnaryInvoker, opts ...grpc.CallOption) error {
-	err := invoker(ctx, method, req, reply, cc, opts...)
-	return common.WrapRPCError(err)
-}
-
 func InitLogicDispatchClient(addr string) {
 	if global.LogicDispatchMap[addr] != nil {
 		return
 	}
-	conn, err := grpc.DialContext(context.TODO(), addr, grpc.WithInsecure(), grpc.WithUnaryInterceptor(interceptor))
+	conn, err := grpc.DialContext(context.TODO(), addr, grpc.WithInsecure(), grpc.WithUnaryInterceptor(DispatcherInterceptor))
 	if err != nil {
 		common.Sugar.Error(err)
 		panic(err)
 	}
 	global.LogicDispatchMap[addr] = pb.NewLogicDispatchClient(conn)
 }
-
-func InitWsDispatchClient(addr string) {
-	conn, err := grpc.DialContext(context.TODO(), addr, grpc.WithInsecure(), grpc.WithUnaryInterceptor(interceptor))
-	if err != nil {
-		common.Sugar.Error(err)
-		panic(err)
-	}
-	global.WsDispatch = pb.NewLogicClientExtClient(conn)
-}
-
 
 func ServiceDiscover(conf *config.Access) {
 	var lastIndex uint64
@@ -97,6 +82,7 @@ func RegisterService(conf *config.Access)  {
 
 	// 注册服务到consul
 	err = client.Agent().ServiceRegister(registration)
+	common.Sugar.Info("服务注册成功")
 }
 
 
@@ -107,28 +93,28 @@ func StartTCPServer(conf *config.Access) {
 		gn.NewHeaderLenDecoder(2, 254),
 		gn.WithTimeout(5*time.Minute, 11*time.Minute),
 		gn.WithAcceptGNum(10),
-		gn.WithIOGNum(100))
+		gn.WithIOGNum(10))
 	if err != nil {
 		panic(err)
 	}
 	global.TcpServer.Run()
+	common.Sugar.Info("tcp服务已启动")
 }
 
 //客户端发消息通道
 func StartClientRpcServer(conf *config.Access) {
-	go func() {
-		defer common.RecoverPanic()
-		intListen, err := net.Listen("tcp", conf.ClientRpcAddr)
-		if err != nil {
-			panic(err)
-		}
-		intServer := grpc.NewServer(grpc.UnaryInterceptor(ClientReqInterceptor))
-		pb.RegisterLogicClientExtServer(intServer, &MessageApiServer{})
-		err = intServer.Serve(intListen)
-		if err != nil {
-			panic(err)
-		}
-	}()
+	defer common.RecoverPanic()
+	intListen, err := net.Listen("tcp", conf.ClientRpcAddr)
+	if err != nil {
+		panic(err)
+	}
+	intServer := grpc.NewServer(grpc.UnaryInterceptor(ClientReqInterceptor))
+	pb.RegisterLogicClientExtServer(intServer, &ClientApiServer{})
+	err = intServer.Serve(intListen)
+	if err != nil {
+		panic(err)
+	}
+	common.Sugar.Info("rpc接口调用服务已启动")
 }
 
 //为其他服务器转发消息
@@ -139,7 +125,7 @@ func StartDispatchRPCServer(conf *config.Access) {
 	}
 	server := grpc.NewServer(grpc.UnaryInterceptor(UnaryServerInterceptor))
 	pb.RegisterLogicDispatchServer(server, &LogicDispatchServer{})
-	common.Logger.Debug("rpc服务已启动")
+	common.Logger.Debug("rpc转发服务已启动")
 	err = server.Serve(listener)
 	if err != nil {
 		panic(err)
@@ -149,7 +135,7 @@ func StartDispatchRPCServer(conf *config.Access) {
 
 func StartWSServer(conf *config.Access) {
 	http.HandleFunc("/ws", WsHandler)
-	common.Logger.Info("websocket server start")
+	common.Logger.Info("websocket服务已启动")
 	err := http.ListenAndServe(conf.WsAddr, nil)
 	if err != nil {
 		panic(err)

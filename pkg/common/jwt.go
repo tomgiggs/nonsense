@@ -23,12 +23,11 @@ func JwtEncry(info JwtTokenInfo) string {
 	data := jwt.StandardClaims{Subject:dataStr,ExpiresAt:time.Now().Unix()-1000}
 	tokenInfo := jwt.NewWithClaims(jwt.SigningMethodHS256,data)
 	tokenStr,_ := tokenInfo.SignedString([]byte(KeyInfo))
-	Sugar.Info("generate token: ",tokenStr)
+	//Sugar.Info("generate token: ",tokenStr)
 	return tokenStr
 
 }
 func JwtDecry(tokenStr string)(JwtTokenInfo,bool){
-	Sugar.Info("generate token: ",tokenStr)
 	tokenInfo , _ := jwt.Parse(tokenStr, func(token *jwt.Token) (i interface{}, e error) {
 		return KeyInfo,nil
 	})

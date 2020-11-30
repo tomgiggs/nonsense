@@ -7,7 +7,6 @@ import (
 	"nonsense/internal/config"
 	"nonsense/pkg/common"
 	pb "nonsense/pkg/proto"
-	"nonsense/pkg/storage"
 	"sync"
 )
 
@@ -18,9 +17,10 @@ var (
 	WsDispatch pb.LogicClientExtClient
 	Encoder = gn.NewHeaderLenEncoder(2, 1024)
 	WSManager sync.Map
+	AppConfig *config.Access
 )
 
-func SendToClient(c *gn.Conn, pt pb.PackageType, requestId int64, err error, message proto.Message) {
+func SendToClient(c *gn.Conn, pt pb.PackageType, requestId string, err error, message proto.Message) {
 	var output = pb.Output{
 		Type:      pt,
 		RequestId: requestId,
@@ -52,8 +52,4 @@ func SendToClient(c *gn.Conn, pt pb.PackageType, requestId int64, err error, mes
 		return
 	}
 }
-
-var StorageClient *storage.DBClient
-
-var AppConfig *config.Access
 

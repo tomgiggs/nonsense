@@ -6,9 +6,8 @@ import (
 	"google.golang.org/grpc"
 	"google.golang.org/grpc/metadata"
 	"google.golang.org/grpc/status"
-	"nonsense/internal/logic/service"
+	"nonsense/internal/service"
 	"nonsense/pkg/common"
-	"nonsense/pkg/grpclib"
 )
 
 func logPanic(serverName string, ctx context.Context, req interface{}, info *grpc.UnaryServerInfo, err *error) {
@@ -21,21 +20,15 @@ func logPanic(serverName string, ctx context.Context, req interface{}, info *grp
 }
 
 
-func doLogicClientExt(ctx context.Context, req interface{}, info *grpc.UnaryServerInfo, handler grpc.UnaryHandler) (interface{}, error) {
-	if info.FullMethod != "/pb.LogicClientExt/RegisterDevice" {
-		appId, userId, _, err := grpclib.GetCtxData(ctx)
-		if err != nil {
-			return nil, err
-		}
-		token, err := grpclib.GetCtxToken(ctx)
-		if err != nil {
-			return nil, err
-		}
+func doClientValidate(ctx context.Context, req interface{}, info *grpc.UnaryServerInfo, handler grpc.UnaryHandler) (interface{}, error) {
+	token, err := common.GetCtxToken(ctx)
+	if err != nil {
+		return nil, err
+	}
 
-		err = service.AuthServiceInst.Auth(ctx, appId, userId, "", token)
-		if err != nil {
-			return nil, err
-		}
+	err = service.AuthServiceInst.IsTokenExpire(ctx, token)
+	if err != nil {
+		return nil, err
 	}
 
 	return handler(ctx, req)
@@ -44,24 +37,30 @@ func doLogicClientExt(ctx context.Context, req interface{}, info *grpc.UnaryServ
 // 通用拦截器
 func UnaryServerInterceptor(ctx context.Context, req interface{}, info *grpc.UnaryServerInfo, handler grpc.UnaryHandler) (interface{}, error) {
 	resp, err := handler(ctx, req)
-	common.Logger.Debug("interceptor", zap.Any("info", info), zap.Any("req", req), zap.Any("resp", resp))
+	common.Logger.Debug("server interceptor", zap.Any("requestId", common.GetCtxRequstId(ctx)), zap.Any("req", req), zap.Any("resp", resp))
 	return resp, err
 }
+
 // 客户端发消息通道拦截器
 func ClientReqInterceptor(ctx context.Context, req interface{}, info *grpc.UnaryServerInfo, handler grpc.UnaryHandler) (resp interface{}, err error) {
 	defer func() {
-		logPanic("logic_client_ext_interceptor", ctx, req, info, &err)
+		logPanic("client interceptor", ctx, req, info, &err)
 	}()
 
-	resp, err = doLogicClientExt(ctx, req, info, handler)
-	common.Logger.Debug("logic_client_ext_interceptor", zap.Any("info", info), zap.Any("ctx", ctx), zap.Any("req", req),zap.Any("resp", resp), zap.Error(err))
+	//对客户端请求进行token验证
+	resp, err = doClientValidate(ctx, req, info, handler)
+	common.Logger.Debug("client interceptor", zap.Any("requestId", common.GetCtxRequstId(ctx)),zap.Any("info", info),
+		zap.Any("ctx", ctx), zap.Any("req", req),zap.Any("resp", resp), zap.Error(err))
 
 	s, _ := status.FromError(err)
 	if s.Code() != 0 && s.Code() < 1000 {
 		md, _ := metadata.FromIncomingContext(ctx)
-		common.Logger.Error("logic_client_ext_interceptor", zap.String("method", info.FullMethod), zap.Any("md", md), zap.Any("req", req),
+		common.Logger.Error("client interceptor", zap.String("method", info.FullMethod), zap.Any("md", md), zap.Any("req", req),
 			zap.Any("resp", resp), zap.Error(err), zap.String("stack", common.GetErrorStack(s)))
 	}
 	return
 }
-
+func DispatcherInterceptor(ctx context.Context, method string, req, reply interface{}, cc *grpc.ClientConn, invoker grpc.UnaryInvoker, opts ...grpc.CallOption) error {
+	err := invoker(ctx, method, req, reply, cc, opts...)
+	return common.WrapRPCError(err)
+}

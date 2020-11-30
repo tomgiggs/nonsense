@@ -2,28 +2,27 @@ package service
 
 import (
 	"context"
-	"nonsense/internal/logic/cache"
-	"nonsense/internal/logic/dao"
+	"nonsense/internal/store"
 	"nonsense/pkg/common"
 )
 
 type GroupService struct{
 }
-func InitGroupService() *GroupService{
+func InitGroupService() *GroupService {
 	return &GroupService{
 	}
 }
 
 // 获取群组信息
-func (self *GroupService) Get(ctx context.Context, appId, groupId int64) (*dao.Group, error) {
-	group, err := cache.CacheInst.GetGroup(appId, groupId)
+func (self *GroupService) Get(ctx context.Context, appId, groupId int64) (*store.Group, error) {
+	group, err := store.CacheInst.GetGroup(appId, groupId)
 	if err != nil {
 		return nil, err
 	}
 	if group != nil {
 		return group, nil
 	}
-	group, err = dao.Storage.GetGroup(appId, groupId)
+	group, err = store.Storage.GetGroup(appId, groupId)
 	if err != nil {
 		return nil, err
 	}
@@ -32,7 +31,7 @@ func (self *GroupService) Get(ctx context.Context, appId, groupId int64) (*dao.G
 		return nil, nil
 	}
 
-	err = cache.CacheInst.SetGroup(group)
+	err = store.CacheInst.SetGroup(group)
 	if err != nil {
 		return nil, err
 	}
@@ -40,8 +39,8 @@ func (self *GroupService) Get(ctx context.Context, appId, groupId int64) (*dao.G
 }
 
 // 创建群组
-func (self *GroupService) Create(ctx context.Context, group dao.Group) error {
-	affected, err := dao.Storage.AddGroup(group)
+func (self *GroupService) Create(ctx context.Context, group store.Group) error {
+	affected, err := store.Storage.AddGroup(group)
 	if err != nil {
 		return err
 	}
@@ -53,12 +52,12 @@ func (self *GroupService) Create(ctx context.Context, group dao.Group) error {
 }
 
 // 更新群组
-func (self *GroupService) Update(ctx context.Context, group dao.Group) error {
-	_,err := dao.Storage.UpdateGroup(group)
+func (self *GroupService) Update(ctx context.Context, group store.Group) error {
+	_,err := store.Storage.UpdateGroup(group)
 	if err != nil {
 		return err
 	}
-	err = cache.CacheInst.DelGroup(group.AppId, group.GroupId)
+	err = store.CacheInst.DelGroup(group.AppId, group.GroupId)
 	if err != nil {
 		return err
 	}
@@ -83,8 +82,8 @@ func (self *GroupService) AddUser(ctx context.Context, appId, groupId, userId in
 		return common.ErrUserNotExist
 	}
 
-	if group.Type == dao.GroupTypeChatRoom {
-		err = cache.CacheInst.SetGroupMember(appId, groupId, userId, label, extra)
+	if group.Type == store.GroupTypeChatRoom {
+		err = store.CacheInst.SetGroupMember(appId, groupId, userId, label, extra)
 		if err != nil {
 			return err
 		}
@@ -103,7 +102,7 @@ func (self *GroupService) UpdateUser(ctx context.Context, appId, groupId, userId
 		return common.ErrGroupNotExist
 	}
 
-	err = cache.CacheInst.SetGroupMember(appId, groupId, userId, label, extra)
+	err = store.CacheInst.SetGroupMember(appId, groupId, userId, label, extra)
 	if err != nil {
 		return err
 	}
@@ -122,7 +121,7 @@ func (self *GroupService) DeleteUser(ctx context.Context, appId, groupId, userId
 		return common.ErrGroupNotExist
 	}
 
-	err = cache.CacheInst.DelGroupMember(appId, groupId, userId)
+	err = store.CacheInst.DelGroupMember(appId, groupId, userId)
 	if err != nil {
 		return err
 	}
@@ -130,12 +129,12 @@ func (self *GroupService) DeleteUser(ctx context.Context, appId, groupId, userId
 }
 
 func (self *GroupService) IsMember(appId, groupId, userId int64) (bool, error) {
-	is, err := cache.CacheInst.IsGroupMember(appId,groupId,userId)
+	is, err := store.CacheInst.IsGroupMember(appId,groupId,userId)
 	return is, err
 }
 // GetUsers 获取群组的所有用户信息
-func (self *GroupService) GetUsers(appId, groupId int64) ([]*dao.GroupUserInfo, error) {
-	users, err := cache.CacheInst.GetGroupMembers(appId, groupId)
+func (self *GroupService) GetUsers(appId, groupId int64) ([]*store.GroupUserInfo, error) {
+	users, err := store.CacheInst.GetGroupMembers(appId, groupId)
 	if err != nil {
 		return nil, err
 	}
@@ -144,13 +143,13 @@ func (self *GroupService) GetUsers(appId, groupId int64) ([]*dao.GroupUserInfo, 
 		return users, nil
 	}
 
-	users, err = dao.Storage.GetMembers(appId, groupId)
+	users, err = store.Storage.GetMembers(appId, groupId)
 	if err != nil {
 		return nil, err
 	}
 
 	for _,user :=range users{
-		err = cache.CacheInst.SetGroupMember(appId, groupId,user.UserId,user.Label, user.UserExtra)
+		err = store.CacheInst.SetGroupMember(appId, groupId,user.UserId,user.Label, user.UserExtra)
 	}
 	if err != nil {
 		return nil, err
@@ -159,8 +158,8 @@ func (self *GroupService) GetUsers(appId, groupId int64) ([]*dao.GroupUserInfo, 
 }
 
 // 获取用户所加入的群组
-func (self *GroupService) ListUserJoinGroup(ctx context.Context, appId, userId int64) ([]dao.Group, error) {
-	groups, err := dao.Storage.ListUserJoinGroup(appId, userId)
+func (self *GroupService) ListUserJoinGroup(ctx context.Context, appId, userId int64) ([]store.Group, error) {
+	groups, err := store.Storage.ListUserJoinGroup(appId, userId)
 	if err != nil {
 		return nil, err
 	}

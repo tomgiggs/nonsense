@@ -33,7 +33,7 @@ func StartTcpClient() {
 	client.Start()
 	select {}
 }
-func (c *TcpClient) Output(pt pb.PackageType, requestId int64, message proto.Message) {
+func (c *TcpClient) Output(pt pb.PackageType, requestId string, message proto.Message) {
 	var input = pb.Input{
 		Type:      pt,
 		RequestId: requestId,
@@ -70,7 +70,7 @@ func (c *TcpClient) Start() {
 	c.codec = util2.NewCodec(connect)
 
 	c.SignIn()
-	//c.SendMsg()
+	c.SendMsg()
 	c.SyncTrigger()
 	go c.Heartbeat()
 	go c.Receive()
@@ -83,7 +83,7 @@ func (c *TcpClient) SignIn() {
 		DeviceId: c.DeviceId,
 		Passwd:    c.Passwd,
 	}
-	c.Output(pb.PackageType_PT_SIGN_IN, time.Now().UnixNano(), &signIn)
+	c.Output(pb.PackageType_PT_SIGN_IN, "", &signIn)
 }
 
 func (c *TcpClient) SendMsg() {
@@ -112,7 +112,7 @@ func (c *TcpClient) SendMsg() {
 	}
 	msg := pb.Input{
 		Type: pb.PackageType_PT_MESSAGE_SEND,
-		RequestId: 26,
+		RequestId: "26",
 		Data: bytes,
 	}
 	inputByf, err := proto.Marshal(&msg)
@@ -128,13 +128,13 @@ func (c *TcpClient) SendMsg() {
 }
 
 func (c *TcpClient) SyncTrigger() {
-	c.Output(pb.PackageType_PT_SYNC, time.Now().UnixNano(), &pb.SyncInput{Seq: c.Seq})
+	c.Output(pb.PackageType_PT_SYNC, "", &pb.SyncInput{Seq: c.Seq})
 }
 
 func (c *TcpClient) Heartbeat() {
 	ticker := time.NewTicker(time.Second * 30)
 	for range ticker.C {
-		c.Output(pb.PackageType_PT_HEARTBEAT, time.Now().UnixNano(), nil)
+		c.Output(pb.PackageType_PT_HEARTBEAT, "", nil)
 	}
 }
 

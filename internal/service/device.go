@@ -2,8 +2,7 @@ package service
 
 import (
 	"context"
-	"nonsense/internal/logic/cache"
-	"nonsense/internal/logic/dao"
+	"nonsense/internal/store"
 	"nonsense/pkg/common"
 )
 
@@ -14,11 +13,11 @@ const (
 
 type DeviceService struct{}
 
-func InitDeviceService()*DeviceService{
+func InitDeviceService()*DeviceService {
 	return &DeviceService{}
 }
 // Register 注册设备
-func (*DeviceService) Register(ctx context.Context, device dao.Device) (int64, error) {
+func (*DeviceService) Register(ctx context.Context, device store.Device) (int64, error) {
 	app, err := AppServiceInst.Get(ctx, device.AppId)
 	if err != nil {
 		common.Sugar.Error(err)
@@ -30,7 +29,7 @@ func (*DeviceService) Register(ctx context.Context, device dao.Device) (int64, e
 	}
 	var deviceId int64
 
-	deviceId,err = dao.Storage.AddDevice(device)
+	deviceId,err = store.Storage.AddDevice(device)
 	if err != nil {
 		return 0, err
 	}
@@ -39,8 +38,8 @@ func (*DeviceService) Register(ctx context.Context, device dao.Device) (int64, e
 }
 
 // ListOnlineByUserId 获取用户的所有在线设备
-func (*DeviceService) ListOnlineByUserId(ctx context.Context, appId, userId int64) ([]dao.Device, error) {
-	devices, err := cache.CacheInst.GetDevice(appId, userId)
+func (*DeviceService) ListOnlineByUserId(ctx context.Context, appId, userId int64) ([]store.Device, error) {
+	devices, err := store.CacheInst.GetDevice(appId, userId)
 	if err != nil {
 		return nil, err
 	}
@@ -49,12 +48,12 @@ func (*DeviceService) ListOnlineByUserId(ctx context.Context, appId, userId int6
 		return devices, nil
 	}
 
-	devices, err = dao.Storage.ListOnlineByUserId(appId, userId)
+	devices, err = store.Storage.ListOnlineByUserId(appId, userId)
 	if err != nil {
 		return nil, err
 	}
 
-	err = cache.CacheInst.SetDevice(appId, userId, devices)
+	err = store.CacheInst.SetDevice(appId, userId, devices)
 	if err != nil {
 		return nil, err
 	}
@@ -64,12 +63,12 @@ func (*DeviceService) ListOnlineByUserId(ctx context.Context, appId, userId int6
 
 // 设备上线
 func (self *DeviceService) Online(ctx context.Context, appId, deviceId, userId int64, connId string, UserIp string) error {
-	err := dao.Storage.UpdateDeviceStatus(deviceId, DeviceOnline)
+	err := store.Storage.UpdateDeviceStatus(deviceId, DeviceOnline)
 	if err != nil {
 		return err
 	}
 
-	err = cache.CacheInst.DelDevice(appId, userId)
+	err = store.CacheInst.DelDevice(appId, userId)
 	if err != nil {
 		return err
 	}
@@ -78,12 +77,12 @@ func (self *DeviceService) Online(ctx context.Context, appId, deviceId, userId i
 
 // Offline 设备离线
 func (self *DeviceService) Offline(ctx context.Context, appId, userId, deviceId int64) error {
-	err := dao.Storage.UpdateDeviceStatus(deviceId, DeviceOffline)
+	err := store.Storage.UpdateDeviceStatus(deviceId, DeviceOffline)
 	if err != nil {
 		return err
 	}
 
-	err = cache.CacheInst.DelDevice(appId, userId)
+	err = store.CacheInst.DelDevice(appId, userId)
 	if err != nil {
 		return err
 	}

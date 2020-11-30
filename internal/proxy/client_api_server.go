@@ -3,18 +3,17 @@ package proxy
 import (
 	"context"
 	"nonsense/internal/global"
-	"nonsense/internal/logic/dao"
-	"nonsense/internal/logic/service"
+	"nonsense/internal/service"
+	"nonsense/internal/store"
 	"nonsense/pkg/common"
-	"nonsense/pkg/grpclib"
 	pb "nonsense/pkg/proto"
 )
-type MessageApiServer struct{
+type ClientApiServer struct{
 	pb.UnimplementedLogicClientExtServer
 }
 
 // 设备登录
-func (m *MessageApiServer) SignIn(ctx context.Context, req *pb.SignInReq) (*pb.SignInResp, error) {
+func (m *ClientApiServer) SignIn(ctx context.Context, req *pb.SignInReq) (*pb.SignInResp, error) {
 	tokenStr,err:= service.AuthServiceInst.SignIn(ctx, req.AppId, req.UserId, req.DeviceId, req.Passwd, req.ConnId, req.UserIp)
 
 	return &pb.SignInResp{
@@ -23,29 +22,29 @@ func (m *MessageApiServer) SignIn(ctx context.Context, req *pb.SignInReq) (*pb.S
 }
 
 // 设备同步消息
-func (m *MessageApiServer) Sync(ctx context.Context, req *pb.SyncReq) (*pb.SyncResp, error) {
+func (m *ClientApiServer) Sync(ctx context.Context, req *pb.SyncReq) (*pb.SyncResp, error) {
 	messages, err := service.MessageServiceInst.ListByUserIdAndSeq(ctx, req.AppId, req.UserId, req.Seq)
 	if err != nil {
 		return nil, err
 	}
 	return &pb.SyncResp{
-		Messages: dao.MessagesToPB(messages),
+		Messages: store.MessagesToPB(messages),
 	}, nil
 }
 
 // 收到消息ack
-func (m *MessageApiServer) MessageACK(ctx context.Context, req *pb.MessageACKReq) (*pb.MessageACKResp, error) {
+func (m *ClientApiServer) MessageACK(ctx context.Context, req *pb.MessageACKReq) (*pb.MessageACKResp, error) {
 	return &pb.MessageACKResp{}, service.UserServiceInst.UpdateUserAckSeq(req.AppId, req.UserId, req.GroupId,req.Seq)
 }
 
 // 设备离线
-func (m *MessageApiServer) Offline(ctx context.Context, req *pb.OfflineReq) (*pb.OfflineResp, error) {
+func (m *ClientApiServer) Offline(ctx context.Context, req *pb.OfflineReq) (*pb.OfflineResp, error) {
 	return &pb.OfflineResp{}, service.DeviceServiceInst.Offline(ctx, req.AppId, req.UserId, req.DeviceId)
 }
 
 // 注册设备
-func (m *MessageApiServer) RegisterDevice(ctx context.Context, in *pb.RegisterDeviceReq) (*pb.RegisterDeviceResp, error) {
-	device := dao.Device{
+func (m *ClientApiServer) RegisterDevice(ctx context.Context, in *pb.RegisterDeviceReq) (*pb.RegisterDeviceResp, error) {
+	device := store.Device{
 		AppId:         in.AppId,
 		Type:          in.Type,
 		Brand:         in.Brand,
@@ -67,15 +66,15 @@ func (m *MessageApiServer) RegisterDevice(ctx context.Context, in *pb.RegisterDe
 }
 
 // 添加用户
-func (m *MessageApiServer) AddUser(ctx context.Context, in *pb.AddUserReq) (*pb.AddUserResp, error) {
-	appId, _, _, err := grpclib.GetCtxData(ctx)
+func (m *ClientApiServer) AddUser(ctx context.Context, in *pb.AddUserReq) (*pb.AddUserResp, error) {
+	appId, _, _, err := common.GetCtxData(ctx)
 	if err != nil {
 		return &pb.AddUserResp{
 			UserId: int64(0),
 		}, err
 	}
 
-	user := dao.User{
+	user := store.User{
 		AppId:     appId,
 		Nickname:  in.User.Nickname,
 		Sex:       in.User.Sex,
@@ -91,8 +90,8 @@ func (m *MessageApiServer) AddUser(ctx context.Context, in *pb.AddUserReq) (*pb.
 }
 
 // 获取用户信息
-func (m *MessageApiServer) GetUser(ctx context.Context, in *pb.GetUserReq) (*pb.GetUserResp, error) {
-	appId, _, _, err := grpclib.GetCtxData(ctx)
+func (m *ClientApiServer) GetUser(ctx context.Context, in *pb.GetUserReq) (*pb.GetUserResp, error) {
+	appId, _, _, err := common.GetCtxData(ctx)
 	if err != nil {
 		return &pb.GetUserResp{}, err
 	}
@@ -119,8 +118,8 @@ func (m *MessageApiServer) GetUser(ctx context.Context, in *pb.GetUserReq) (*pb.
 }
 
 // 发送消息
-func (m *MessageApiServer) SendMessage(ctx context.Context, in *pb.SendMessageReq) (*pb.SendMessageResp,error) {
-	appId, userId, deviceId, err := grpclib.GetCtxData(ctx)
+func (m *ClientApiServer) SendMessage(ctx context.Context, in *pb.SendMessageReq) (*pb.SendMessageResp,error) {
+	appId, userId, deviceId, err := common.GetCtxData(ctx)
 	rsp := &pb.SendMessageResp{
 		ResultCode: global.REQ_RESULT_CODE_OK,
 	}
@@ -128,7 +127,7 @@ func (m *MessageApiServer) SendMessage(ctx context.Context, in *pb.SendMessageRe
 		return nil, err
 	}
 
-	sender := dao.Sender{
+	sender := store.Sender{
 		AppId:      appId,
 		SenderType: pb.SenderType_ST_USER,
 		SenderId:   userId,
@@ -142,16 +141,16 @@ func (m *MessageApiServer) SendMessage(ctx context.Context, in *pb.SendMessageRe
 }
 
 // 创建群组
-func (m *MessageApiServer) CreateGroup(ctx context.Context, in *pb.CreateGroupReq) (*pb.CreateGroupResp, error) {
+func (m *ClientApiServer) CreateGroup(ctx context.Context, in *pb.CreateGroupReq) (*pb.CreateGroupResp, error) {
 	rsp := &pb.CreateGroupResp{
 		ResultCode: global.REQ_RESULT_CODE_FAIL,
 	}
-	appId, _, _, err := grpclib.GetCtxData(ctx)
+	appId, _, _, err := common.GetCtxData(ctx)
 	if err != nil {
 		return rsp, err
 	}
 
-	var group = dao.Group{
+	var group = store.Group{
 		AppId:        appId,
 		GroupId:      in.Group.GroupId,
 		Name:         in.Group.Name,
@@ -168,13 +167,13 @@ func (m *MessageApiServer) CreateGroup(ctx context.Context, in *pb.CreateGroupRe
 }
 
 // 更新群组
-func (m *MessageApiServer) UpdateGroup(ctx context.Context, in *pb.UpdateGroupReq) (*pb.UpdateGroupResp, error) {
-	appId, _, _, err := grpclib.GetCtxData(ctx)
+func (m *ClientApiServer) UpdateGroup(ctx context.Context, in *pb.UpdateGroupReq) (*pb.UpdateGroupResp, error) {
+	appId, _, _, err := common.GetCtxData(ctx)
 	if err != nil {
 		return nil, err
 	}
 
-	var group = dao.Group{
+	var group = store.Group{
 		AppId:        appId,
 		GroupId:      in.Group.GroupId,
 		Name:         in.Group.Name,
@@ -190,8 +189,8 @@ func (m *MessageApiServer) UpdateGroup(ctx context.Context, in *pb.UpdateGroupRe
 }
 
 // 获取群组信息
-func (m *MessageApiServer) GetGroup(ctx context.Context, in *pb.GetGroupReq) (*pb.GetGroupResp, error) {
-	appId, _, _, err := grpclib.GetCtxData(ctx)
+func (m *ClientApiServer) GetGroup(ctx context.Context, in *pb.GetGroupReq) (*pb.GetGroupResp, error) {
+	appId, _, _, err := common.GetCtxData(ctx)
 	if err != nil {
 		return nil, err
 	}
@@ -220,8 +219,8 @@ func (m *MessageApiServer) GetGroup(ctx context.Context, in *pb.GetGroupReq) (*p
 }
 
 // 获取用户加入的所有群组
-func (m *MessageApiServer) GetUserGroups(ctx context.Context, in *pb.GetUserGroupsReq) (*pb.GetUserGroupsResp, error) {
-	appId, userId, _, err := grpclib.GetCtxData(ctx)
+func (m *ClientApiServer) GetUserGroups(ctx context.Context, in *pb.GetUserGroupsReq) (*pb.GetUserGroupsResp, error) {
+	appId, userId, _, err := common.GetCtxData(ctx)
 	if err != nil {
 		return nil, err
 	}
@@ -248,8 +247,8 @@ func (m *MessageApiServer) GetUserGroups(ctx context.Context, in *pb.GetUserGrou
 }
 
 // 添加群组成员
-func (m *MessageApiServer) AddGroupMember(ctx context.Context, in *pb.AddGroupMemberReq) (*pb.AddGroupMemberResp, error) {
-	appId, _, _, err := grpclib.GetCtxData(ctx)
+func (m *ClientApiServer) AddGroupMember(ctx context.Context, in *pb.AddGroupMemberReq) (*pb.AddGroupMemberResp, error) {
+	appId, _, _, err := common.GetCtxData(ctx)
 	if err != nil {
 		common.Sugar.Error(err)
 		return nil, err
@@ -265,8 +264,8 @@ func (m *MessageApiServer) AddGroupMember(ctx context.Context, in *pb.AddGroupMe
 }
 
 // 更新群组成员信息
-func (m *MessageApiServer) UpdateGroupMember(ctx context.Context, in *pb.UpdateGroupMemberReq) (*pb.UpdateGroupMemberResp, error) {
-	appId, _, _, err := grpclib.GetCtxData(ctx)
+func (m *ClientApiServer) UpdateGroupMember(ctx context.Context, in *pb.UpdateGroupMemberReq) (*pb.UpdateGroupMemberResp, error) {
+	appId, _, _, err := common.GetCtxData(ctx)
 	if err != nil {
 		return nil, err
 	}
@@ -280,8 +279,8 @@ func (m *MessageApiServer) UpdateGroupMember(ctx context.Context, in *pb.UpdateG
 }
 
 // 添加群组成员
-func (m *MessageApiServer) DeleteGroupMember(ctx context.Context, in *pb.DeleteGroupMemberReq) (*pb.DeleteGroupMemberResp, error) {
-	appId, _, _, err := grpclib.GetCtxData(ctx)
+func (m *ClientApiServer) DeleteGroupMember(ctx context.Context, in *pb.DeleteGroupMemberReq) (*pb.DeleteGroupMemberResp, error) {
+	appId, _, _, err := common.GetCtxData(ctx)
 	if err != nil {
 		return nil, err
 	}

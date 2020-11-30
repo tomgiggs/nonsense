@@ -1,4 +1,4 @@
-package dao
+package store
 
 import (
 	jsoniter "github.com/json-iterator/go"

@@ -509,15 +509,18 @@ var $root = ($protobuf.roots["default"] || ($protobuf.roots["default"] = new $pr
         values: {
           EC_SUCCESS: 0,
           EC_SERVER_UNKNOWN: 1001,
-          EC_UNAUTHORIZED: 1002,
-          EC_IS_NOT_FRIEND: 1003,
-          EC_IS_NOT_IN_GROUP: 1004,
-          EC_DEVICE_NOT_BIND_USER: 1005,
-          EC_BAD_REQUEST: 1006,
-          EC_USER_ALREADY_EXIST: 1007,
-          EC_GROUP_ALREADY_EXIST: 1008,
-          EC_GROUP_NOT_EXIST: 1009,
-          EC_USER_NOT_EXIST: 1010
+          EC_DB_ERROR: 1002,
+          EC_CACHE_ERROR: 1003,
+          EC_BAD_REQUEST: 1004,
+          EC_UNAUTHORIZED: 2001,
+          EC_DEVICE_NOT_BIND_USER: 2002,
+          EC_USER_NOT_EXIST: 3001,
+          EC_USER_ALREADY_EXIST: 3002,
+          EC_IS_NOT_FRIEND: 3003,
+          EC_PASSWD_NOT_MATCH: 3004,
+          EC_GROUP_ALREADY_EXIST: 4001,
+          EC_GROUP_NOT_EXIST: 4002,
+          EC_IS_NOT_IN_GROUP: 4003
         }
       },
       MessageType: {
@@ -802,7 +805,7 @@ var $root = ($protobuf.roots["default"] || ($protobuf.roots["default"] = new $pr
             id: 1
           },
           requestId: {
-            type: "int64",
+            type: "string",
             id: 2
           },
           data: {
@@ -818,7 +821,7 @@ var $root = ($protobuf.roots["default"] || ($protobuf.roots["default"] = new $pr
             id: 1
           },
           requestId: {
-            type: "int64",
+            type: "string",
             id: 2
           },
           code: {

@@ -2,13 +2,13 @@ package common
 
 import (
 	"fmt"
-	"runtime"
-	"strings"
-	pb "nonsense/pkg/proto"
 	"github.com/golang/protobuf/ptypes/any"
 	spb "google.golang.org/genproto/googleapis/rpc/status"
 	"google.golang.org/grpc/codes"
 	"google.golang.org/grpc/status"
+	pb "nonsense/pkg/proto"
+	"runtime"
+	"strings"
 )
 
 const name = "nonsense"
@@ -18,6 +18,8 @@ const TypeUrlStack = "type_url_stack"
 var (
 	ErrUnknown           = status.New(codes.Unknown, "error unknown").Err()                           // 服务器未知错误
 	ErrUnauthorized      = newError(pb.ErrCode_EC_UNAUTHORIZED, "error unauthorized")                 // 未登录
+	ErrDBError           = newError(pb.ErrCode_EC_DB_ERROR, "error db error")                     // 数据库错误
+	ErrCacheError        = newError(pb.ErrCode_EC_CACHE_ERROR, "cache error")                      // 缓存错误
 	ErrNotInGroup        = newError(pb.ErrCode_EC_IS_NOT_IN_GROUP, "error not in group")              // 没有在群组内
 	ErrDeviceNotBindUser = newError(pb.ErrCode_EC_DEVICE_NOT_BIND_USER, "error device not bind user") // 没有在群组内
 	ErrBadRequest        = newError(pb.ErrCode_EC_BAD_REQUEST, "error bad request")                   // 请求参数错误

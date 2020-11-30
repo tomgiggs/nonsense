@@ -12,17 +12,30 @@ enum PackageType {
 }
 
 enum ErrCode {
+    //server error
     EC_SUCCESS = 0;
     EC_SERVER_UNKNOWN = 1001; // 服务器未知错误
-    EC_UNAUTHORIZED = 1002; // 未登录或者需要重新登录
-    EC_IS_NOT_FRIEND = 1003; // 不是好友关系
-    EC_IS_NOT_IN_GROUP = 1004; // 用户没有在群组内
-    EC_DEVICE_NOT_BIND_USER = 1005; // 设备没有绑定用户
-    EC_BAD_REQUEST = 1006; // 请求参数错误
-    EC_USER_ALREADY_EXIST = 1007; // 用户已经存在
-    EC_GROUP_ALREADY_EXIST = 1008; // 群组已经存在
-    EC_GROUP_NOT_EXIST = 1009; // 群组不存在
-    EC_USER_NOT_EXIST = 1010; // 用户不存在
+    EC_DB_ERROR = 1002; // 数据库错误
+    EC_CACHE_ERROR = 1003; // 缓存错误
+    EC_BAD_REQUEST = 1004; // 请求参数错误
+
+    //invalid request
+    EC_UNAUTHORIZED = 2001; // 未登录或者需要重新登录
+    EC_DEVICE_NOT_BIND_USER = 2002; // 设备没有绑定用户
+
+
+    //user error
+    EC_USER_NOT_EXIST = 3001; // 用户不存在
+    EC_USER_ALREADY_EXIST = 3002; // 用户已经存在
+    EC_IS_NOT_FRIEND = 3003; // 不是好友关系
+    EC_PASSWD_NOT_MATCH = 3004; // 密码不对
+
+    //group error
+    EC_GROUP_ALREADY_EXIST = 4001; // 群组已经存在
+    EC_GROUP_NOT_EXIST = 4002; // 群组不存在
+    EC_IS_NOT_IN_GROUP = 4003; // 用户没有在群组内
+
+
 }
 
 /************************************消息体定义开始************************************/
@@ -160,14 +173,14 @@ message Message {
 // 上行数据
 message Input {
     PackageType type = 1; // 包的类型
-    int64 request_id = 2; // 请求id
+    string request_id = 2; // 请求id
     bytes data = 3; // 数据
 }
 
 // 下行数据
 message Output {
     PackageType type = 1; // 包的类型
-    int64 request_id = 2; // 请求id
+    string  request_id = 2; // 请求id
     int32 code = 3; // 错误码
     string message = 4; // 错误信息
     bytes data = 5; // 数据

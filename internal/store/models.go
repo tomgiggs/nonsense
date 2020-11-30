@@ -1,4 +1,4 @@
-package dao
+package store
 
 import (
 	pb "nonsense/pkg/proto"
@@ -30,8 +30,8 @@ type Device struct {
 	SystemVersion string    // 系统版本
 	SDKVersion    string    // SDK版本
 	Status        int32     // 在线状态，0：不在线；1：在线
-	ConnId      string    // 连接层服务层地址
-	UserIp        string     // TCP连接对应的文件描述符
+	ConnId        string    // 连接层服务层地址
+	UserIp        string    // TCP连接对应的文件描述符
 	CreateTime    time.Time // 创建时间
 	UpdateTime    time.Time // 更新时间
 }
@@ -41,33 +41,31 @@ type DeviceToken struct {
 	Token  string
 }
 type UserSeq struct {
-	AppId int64
-	UserId int64
-	ReadSeq int64
+	AppId      int64
+	UserId     int64
+	ReadSeq    int64
 	ReceiveSeq int64
 }
 
-
 // User 账户
 type User struct {
-	Id         int64     `json:"-"`          // 用户id
-	AppId      int64     `json:"app_id"`     // app_id
-	UserId     int64     `json:"user_id"`    // 手机号
-	Passwd   string    `json:"passwd"`   // 密码
-	Birthday	string	`json:"birthday"`	//生日
-	Mobile	string	`json:"birthday"`	//手机号
-	Email	string	`json:"email"`	//邮箱
+	Id       int64  `json:"-"`        // 用户id
+	AppId    int64  `json:"app_id"`   // app_id
+	UserId   int64  `json:"user_id"`  // 手机号
+	Passwd   string `json:"passwd"`   // 密码
+	Birthday string `json:"birthday"` //生日
+	Mobile   string `json:"birthday"` //手机号
+	Email    string `json:"email"`    //邮箱
 
-	Nickname   string    `json:"nickname"`   // 昵称
-	Sex        int32     `json:"sex"`        // 性别，1:男；2:女
-	AvatarUrl  string    `json:"avatar_url"` // 用户头像
-	Extra      string    `json:"extra"`      // 附加属性
-	CreateTime time.Time `json:"-"`          // 创建时间
+	Nickname      string    `json:"nickname"`   // 昵称
+	Sex           int32     `json:"sex"`        // 性别，1:男；2:女
+	AvatarUrl     string    `json:"avatar_url"` // 用户头像
+	Extra         string    `json:"extra"`      // 附加属性
+	CreateTime    time.Time `json:"-"`          // 创建时间
 	LastLoginTime time.Time `json:"-"`          // 更新时间
-	WeixinOpenid string `json:"weixin_openid"`
-	LastLoginIp string `json:"last_login_ip"`
-	RegisterIp string `json:"register_ip"`
-
+	WeixinOpenid  string    `json:"weixin_openid"`
+	LastLoginIp   string    `json:"last_login_ip"`
+	RegisterIp    string    `json:"register_ip"`
 }
 
 const (
@@ -100,8 +98,8 @@ type GroupMember map[int64]GroupUserInfo
 
 // 群组成员信息
 type GroupUserInfo struct {
-	AppId		   int64     `json:"app_id"`          // 应用id
-	GroupId		   int64     `json:"group_id"`          // 群组id
+	AppId          int64     `json:"app_id"`           // 应用id
+	GroupId        int64     `json:"group_id"`         // 群组id
 	UserId         int64     `json:"user_id"`          // 用户id
 	Label          string    `json:"label"`            // 用户标签
 	GroupUserExtra string    `json:"group_user_extra"` // 群组用户附件属性
@@ -112,7 +110,6 @@ type GroupUserInfo struct {
 	CreateTime     time.Time `json:"create_time"`      // 创建时间
 	UpdateTime     time.Time `json:"update_time"`      // 更新时间
 }
-
 
 type Sender struct {
 	AppId      int64         // appId
@@ -132,7 +129,7 @@ type Message struct {
 	AppId          int64     // appId
 	ObjectType     int       // 所属类型
 	ObjectId       int64     // 所属类型id
-	MessageId      string     // 请求id
+	MessageId      string    // 请求id
 	SenderType     int32     // 发送者类型
 	SenderId       int64     // 发送者账户id
 	SenderDeviceId int64     // 发送者设备id
@@ -159,4 +156,3 @@ type SendMessage struct {
 	} `json:"message_body"`
 	PbBody *pb.MessageBody `json:"-"`
 }
-

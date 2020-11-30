@@ -1,4 +1,4 @@
-package storage
+package store
 
 import (
 	"database/sql"
@@ -7,7 +7,7 @@ import (
 	"nonsense/internal/config"
 	"nonsense/pkg/common"
 )
-
+var StorageClient *DBClient
 
 type DBClient struct{
 	MysqlClient *sql.DB

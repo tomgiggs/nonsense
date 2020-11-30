@@ -3,13 +3,13 @@ package service
 import (
 	"context"
 	"fmt"
-	"nonsense/internal/logic/dao"
+	"nonsense/internal/store"
 	"nonsense/pkg/common"
 )
 
 type AuthService struct{}
 
-func InitAuthService()*AuthService{
+func InitAuthService()*AuthService {
 	return &AuthService{}
 }
 
@@ -41,7 +41,7 @@ func (self *AuthService) SignIn(ctx context.Context, appId, userId int64, device
 	}
 	//初始化用户seq到缓存
 	var seq int64
-	seq,err = dao.Storage.GetUserSeq(appId,userId,0)
+	seq,err = store.Storage.GetUserSeq(appId,userId,0)
 	SeqServiceInst.SetUserSeq(appId,userId,seq)
 
 	return tokenStr,nil
@@ -54,14 +54,6 @@ func (self *AuthService) Auth(ctx context.Context, appId, userId int64, passwd s
 
 // 对用户秘钥进行校验
 func (self *AuthService) VerifyToken(ctx context.Context, appId, userId int64, passwd string, token string) error {
-	app, err := AppServiceInst.Get(ctx, appId)
-	if err != nil {
-		return err
-	}
-
-	if app == nil {
-		return common.ErrBadRequest
-	}
 
 	//info, err := common.DecryptToken(token, app.PrivateKey)
 	//if err != nil {
@@ -74,6 +66,15 @@ func (self *AuthService) VerifyToken(ctx context.Context, appId, userId int64, p
 	}
 
 	if !(info.AppId == appId && info.UserId == userId && info.Passwd == passwd) {
+		return common.ErrUnauthorized
+	}
+
+	return nil
+}
+func (self *AuthService) IsTokenExpire(ctx context.Context, token string) error {
+
+	_,succ := common.JwtDecry(token)
+	if !succ {
 		return common.ErrUnauthorized
 	}
 

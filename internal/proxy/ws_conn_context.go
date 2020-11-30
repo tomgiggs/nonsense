@@ -3,17 +3,16 @@ package proxy
 import (
 	"context"
 	"fmt"
-	"io"
-	"nonsense/internal/global"
-	"nonsense/pkg/grpclib"
-	pb "nonsense/pkg/proto"
-	"strings"
-	"time"
-	"nonsense/pkg/common"
 	"github.com/golang/protobuf/proto"
 	"github.com/gorilla/websocket"
 	"go.uber.org/zap"
 	"google.golang.org/grpc/status"
+	"io"
+	"nonsense/internal/global"
+	"nonsense/pkg/common"
+	pb "nonsense/pkg/proto"
+	"strings"
+	"time"
 )
 
 const PreConn = -1 // 设备第二次重连时，标记设备的上一条连接
@@ -85,7 +84,7 @@ func (c *WSConnContext) Sync(input pb.Input) {
 		return
 	}
 
-	resp, err := global.WsDispatch.Sync(grpclib.ContextWithRequstId(context.TODO(), input.RequestId), &pb.SyncReq{
+	resp, err := global.WsDispatch.Sync(common.ContextWithRequstId(context.TODO()), &pb.SyncReq{
 		AppId:    c.AppId,
 		UserId:   c.UserId,
 		DeviceId: c.DeviceId,
@@ -110,7 +109,7 @@ func (c *WSConnContext) SendMsg(input pb.Input) {
 		return
 	}
 
-	resp, err := global.WsDispatch.SendMessage(grpclib.ContextWithRequstId(context.TODO(), input.RequestId), &msg)
+	resp, err := global.WsDispatch.SendMessage(common.ContextWithRequstId(context.TODO()), &msg)
 	fmt.Println(resp.ProtoMessage)
 
 	var message proto.Message
@@ -137,10 +136,10 @@ func (c *WSConnContext) MessageACK(input pb.Input) {
 		return
 	}
 
-	_, _ = global.WsDispatch.MessageACK(grpclib.ContextWithRequstId(context.TODO(), input.RequestId), &messageACK)
+	_, _ = global.WsDispatch.MessageACK(common.ContextWithRequstId(context.TODO()), &messageACK)
 }
 
-func (c *WSConnContext) Output(pt pb.PackageType, requestId int64, err error, message proto.Message) {
+func (c *WSConnContext) Output(pt pb.PackageType, requestId string, err error, message proto.Message) {
 	var output = pb.Output{
 		Type:      pt,
 		RequestId: requestId,
@@ -204,7 +203,7 @@ func (c *WSConnContext) Release() {
 	}
 
 	// 通知业务服务器设备下线
-	if c.DeviceId != PreConn {
+	if c.DeviceId != -1 {
 		_, _ = global.WsDispatch.Offline(context.TODO(), &pb.OfflineReq{
 			AppId:    c.AppId,
 			UserId:   c.UserId,

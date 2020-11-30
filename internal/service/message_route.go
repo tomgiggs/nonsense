@@ -4,28 +4,24 @@ import (
 	"context"
 	"go.uber.org/zap"
 	"nonsense/internal/global"
-	"nonsense/internal/logic/cache"
-	"nonsense/internal/logic/dao"
+	"nonsense/internal/store"
 	"nonsense/pkg/common"
-	"nonsense/pkg/grpclib"
 	pb "nonsense/pkg/proto"
 )
 
 type MessageService struct{}
-func InitMessageService()*MessageService{
+func InitMessageService()*MessageService {
 	return &MessageService{}
 }
 // 未读消息查询
-func (self *MessageService) ListByUserIdAndSeq(ctx context.Context, appId, userId, seq int64) (messages []dao.Message,err error) {
+func (self *MessageService) ListByUserIdAndSeq(ctx context.Context, appId, userId, seq int64) (messages []store.Message,err error) {
 	if seq == 0 {
-		seqInfo := UserServiceInst.GetUserMaxACK(appId,userId,0)
-		seq = seqInfo.data.(int64)
-		if seqInfo.code != global.REQ_RESULT_CODE_OK {
-			common.Sugar.Errorf("get user seq failed")
-			return nil, global.DB_ERROR
+		seq,err = UserServiceInst.GetUserMaxACK(appId,userId,0)
+		if err != nil {
+			return nil, err
 		}
 	}
-	messages, err = dao.Storage.ListMsgBySeq( appId, userId, seq)
+	messages, err = store.Storage.ListMsgBySeq( appId, userId, seq)
 	if err != nil {
 		return nil, err
 	}
@@ -33,7 +29,7 @@ func (self *MessageService) ListByUserIdAndSeq(ctx context.Context, appId, userI
 }
 
 // 消息发送
-func (self *MessageService) Send(ctx context.Context, sender dao.Sender, req pb.SendMessageReq) (err error) {
+func (self *MessageService) Send(ctx context.Context, sender store.Sender, req pb.SendMessageReq) (err error) {
 	switch req.ReceiverType {
 	case pb.ReceiverType_RT_USER:
 		if sender.SenderType == pb.SenderType_ST_USER {
@@ -63,7 +59,7 @@ func (self *MessageService) Send(ctx context.Context, sender dao.Sender, req pb.
 }
 
 // 好友消息
-func (self *MessageService) SendToFriend(ctx context.Context, sender dao.Sender, req pb.SendMessageReq) error {
+func (self *MessageService) SendToFriend(ctx context.Context, sender store.Sender, req pb.SendMessageReq) error {
 
 	// 发给发送者
 	err := self.SendToUser(ctx, sender, sender.SenderId, 0, req)
@@ -81,8 +77,8 @@ func (self *MessageService) SendToFriend(ctx context.Context, sender dao.Sender,
 }
 
 // 普通群组--写扩散
-func (self *MessageService) SendToGroup(ctx context.Context, sender dao.Sender, req pb.SendMessageReq,isLargeGroup bool) error {
-	isMember, err := cache.CacheInst.IsGroupMember(sender.AppId, req.ReceiverId, sender.SenderId)
+func (self *MessageService) SendToGroup(ctx context.Context, sender store.Sender, req pb.SendMessageReq,isLargeGroup bool) error {
+	isMember, err := store.CacheInst.IsGroupMember(sender.AppId, req.ReceiverId, sender.SenderId)
 	if err != nil {
 		return err
 	}
@@ -92,7 +88,7 @@ func (self *MessageService) SendToGroup(ctx context.Context, sender dao.Sender, 
 		return common.ErrNotInGroup
 	}
 
-	users, err := cache.CacheInst.GetGroupMembers(sender.AppId, req.ReceiverId)
+	users, err := store.CacheInst.GetGroupMembers(sender.AppId, req.ReceiverId)
 	if err != nil {
 		return err
 	}
@@ -103,7 +99,7 @@ func (self *MessageService) SendToGroup(ctx context.Context, sender dao.Sender, 
 			return err
 		}
 		msg := self.PB2DB(req,seq,sender)
-		err =dao.Storage.AddMessage(&msg)
+		err = store.Storage.AddMessage(&msg)
 		if err != nil {
 			return err
 		}
@@ -122,7 +118,7 @@ func (self *MessageService) SendToGroup(ctx context.Context, sender dao.Sender, 
 }
 
 // 将消息持久化到数据库,并且消息发送至用户
-func (self *MessageService) SendToUser(ctx context.Context, sender dao.Sender, toUserId int64, roomSeq int64, req pb.SendMessageReq) error {
+func (self *MessageService) SendToUser(ctx context.Context, sender store.Sender, toUserId int64, roomSeq int64, req pb.SendMessageReq) error {
 	common.Logger.Info("message_store_send_to_user",
 		zap.String("message_id", req.MessageId),
 		zap.Int64("app_id", sender.AppId),
@@ -140,7 +136,7 @@ func (self *MessageService) SendToUser(ctx context.Context, sender dao.Sender, t
 			return err
 		}
 		msg := self.PB2DB(req,seq,sender)
-		err =dao.Storage.AddMessage(&msg)
+		err = store.Storage.AddMessage(&msg)
 		if err != nil {
 			common.Logger.Error("message route",zap.Any("save msg to db error",err))
 			return err
@@ -188,7 +184,7 @@ func (self *MessageService) SendToDevice(ctx context.Context, userId int64, msgI
 			common.Logger.Warn("GetConn warn", zap.Int64("user_id", userId))
 			continue
 		}
-		global.SendToClient(connection, pb.PackageType_PT_SYNC, grpclib.GetCtxRequstId(ctx), nil, msgItem)
+		global.SendToClient(connection, pb.PackageType_PT_SYNC, common.GetCtxRequstId(ctx), nil, msgItem)
 	}
 	return nil
 }
@@ -196,13 +192,13 @@ func (self *MessageService) SendToDevice(ctx context.Context, userId int64, msgI
 //找出用户分布在哪几台连接服务器上
 func (self *MessageService) FindUserConnServer(uid int64) []pb.LogicDispatchClient {
 	serverList := make([]pb.LogicDispatchClient,0)
-	if oneCache,ok := cache.UserServerMap[uid];ok{
+	if oneCache,ok := store.UserServerMap[uid];ok{
 		for k,_ := range oneCache{
 			srv := global.LogicDispatchMap[k]
 			serverList = append(serverList,srv)
 		}
 	}else {
-		record := cache.CacheInst.GetUserServerFromRedis(uid)
+		record := store.CacheInst.GetUserServerFromRedis(uid)
 		for k,_ := range record{
 			srv := global.LogicDispatchMap[k]
 			serverList = append(serverList,srv)
@@ -211,11 +207,11 @@ func (self *MessageService) FindUserConnServer(uid int64) []pb.LogicDispatchClie
 	return serverList
 }
 
-func (self *MessageService) PB2DB(req pb.SendMessageReq,seq int64,sender dao.Sender) dao.Message {
-	messageType, messageContent := dao.PBToJsonStr(req.MessageBody)
-	selfMessage := dao.Message{
+func (self *MessageService) PB2DB(req pb.SendMessageReq,seq int64,sender store.Sender) store.Message {
+	messageType, messageContent := store.PBToJsonStr(req.MessageBody)
+	selfMessage := store.Message{
 		AppId:          sender.AppId,
-		ObjectType:     dao.MessageObjectTypeUser,
+		ObjectType:     store.MessageObjectTypeUser,
 		ObjectId:       req.ReceiverId,
 		MessageId:      req.MessageId,
 		SenderType:     int32(sender.SenderType),
@@ -223,7 +219,7 @@ func (self *MessageService) PB2DB(req pb.SendMessageReq,seq int64,sender dao.Sen
 		SenderDeviceId: sender.DeviceId,
 		ReceiverType:   int32(req.ReceiverType),
 		ReceiverId:     req.ReceiverId,
-		ToUserIds:      dao.FormatUserIds(req.ToUserIds),
+		ToUserIds:      store.FormatUserIds(req.ToUserIds),
 		Type:           messageType,
 		Content:        messageContent,
 		Seq:            seq,

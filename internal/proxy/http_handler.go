@@ -9,7 +9,6 @@ import (
 	"net/http"
 	"nonsense/internal/global"
 	"nonsense/pkg/common"
-	"nonsense/pkg/grpclib"
 	pb "nonsense/pkg/proto"
 	"strconv"
 )
@@ -25,11 +24,10 @@ var upgrader = websocket.Upgrader{
 
 
 func WsHandler(w http.ResponseWriter, r *http.Request) {
-	appId, _ := strconv.ParseInt(r.Header.Get(grpclib.CtxAppId), 10, 64)
-	userId, _ := strconv.ParseInt(r.Header.Get(grpclib.CtxUserId), 10, 64)
-	deviceId, _ := strconv.ParseInt(r.Header.Get(grpclib.CtxDeviceId), 10, 64)
-	passwd := r.Header.Get(grpclib.CtxToken)
-	requestId, _ := strconv.ParseInt(r.Header.Get(grpclib.CtxRequestId), 10, 64)
+	appId, _ := strconv.ParseInt(r.Header.Get(common.CtxAppId), 10, 64)
+	userId, _ := strconv.ParseInt(r.Header.Get(common.CtxUserId), 10, 64)
+	deviceId, _ := strconv.ParseInt(r.Header.Get(common.CtxDeviceId), 10, 64)
+	passwd := r.Header.Get(common.CtxToken)
 
 	if appId == 0 || userId == 0 || deviceId == 0 || passwd == "" {
 		s, _ := status.FromError(common.ErrUnauthorized)
@@ -41,7 +39,7 @@ func WsHandler(w http.ResponseWriter, r *http.Request) {
 		w.Write(bytes)
 		return
 	}
-	_, err := global.WsDispatch.SignIn(grpclib.ContextWithRequstId(context.TODO(), requestId), &pb.SignInReq{
+	_, err := global.WsDispatch.SignIn(common.ContextWithRequstId(context.TODO()), &pb.SignInReq{
 		AppId:    appId,
 		UserId:   userId,
 		DeviceId: deviceId,

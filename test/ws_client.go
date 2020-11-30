@@ -6,7 +6,6 @@ import (
 	"net/http"
 	"net/url"
 	"nonsense/pkg/common"
-	"nonsense/pkg/grpclib"
 	pb "nonsense/pkg/proto"
 	"strconv"
 	"time"
@@ -40,11 +39,11 @@ func (c *WSClient) Start() {
 	u := url.URL{Scheme: "ws", Host: "localhost:8081", Path: "/ws"}
 
 	header := http.Header{}
-	header.Set(grpclib.CtxAppId, strconv.FormatInt(c.AppId, 10))
-	header.Set(grpclib.CtxUserId, strconv.FormatInt(c.UserId, 10))
-	header.Set(grpclib.CtxDeviceId, strconv.FormatInt(c.DeviceId, 10))
+	header.Set(common.CtxAppId, strconv.FormatInt(c.AppId, 10))
+	header.Set(common.CtxUserId, strconv.FormatInt(c.UserId, 10))
+	header.Set(common.CtxDeviceId, strconv.FormatInt(c.DeviceId, 10))
 
-	header.Set(grpclib.CtxToken, c.Passwd)
+	header.Set(common.CtxToken, c.Passwd)
 
 	conn, resp, err := websocket.DefaultDialer.Dial(u.String(), header)
 	if err != nil {
@@ -65,7 +64,7 @@ func (c *WSClient) Start() {
 	go c.Receive()
 }
 
-func (c *WSClient) Output(pt pb.PackageType, requestId int64, message proto.Message) {
+func (c *WSClient) Output(pt pb.PackageType, requestId string, message proto.Message) {
 	var input = pb.Input{
 		Type:      pt,
 		RequestId: requestId,
@@ -93,13 +92,13 @@ func (c *WSClient) Output(pt pb.PackageType, requestId int64, message proto.Mess
 }
 
 func (c *WSClient) SyncTrigger() {
-	c.Output(pb.PackageType_PT_SYNC, time.Now().UnixNano(), &pb.SyncInput{Seq: c.Seq})
+	c.Output(pb.PackageType_PT_SYNC, "", &pb.SyncInput{Seq: c.Seq})
 }
 
 func (c *WSClient) Heartbeat() {
 	ticker := time.NewTicker(time.Minute * 4)
 	for range ticker.C {
-		c.Output(pb.PackageType_PT_HEARTBEAT, time.Now().UnixNano(), nil)
+		c.Output(pb.PackageType_PT_HEARTBEAT, "", nil)
 		fmt.Println("心跳发送")
 	}
 }

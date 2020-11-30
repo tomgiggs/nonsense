@@ -3,11 +3,9 @@ package main
 import (
 	"nonsense/internal/config"
 	"nonsense/internal/global"
-	"nonsense/internal/logic/cache"
-	"nonsense/internal/logic/dao"
 	"nonsense/internal/proxy"
+	"nonsense/internal/store"
 	"nonsense/pkg/common"
-	"nonsense/pkg/storage"
 	"os"
 	"os/signal"
 	"syscall"
@@ -20,9 +18,9 @@ func main(){
 		panic(err)
 	}
 	global.AppConfig = conf
-	global.StorageClient=storage.NewDBClient(conf)
-	dao.OpenAdapter(conf)
-	cache.NewRcache(conf)
+	store.StorageClient= store.NewDBClient(conf)
+	store.OpenAdapter(conf)
+	store.NewRcache(conf)
 
 	//为其他服务器转发消息到客户端
 	go func() {
@@ -42,13 +40,8 @@ func main(){
 		//rpc客户端消息通道
 		proxy.StartClientRpcServer(conf)
 	}()
-	////监听用户连接在哪台服务器
-	//go func() {
-	//	cache.RefreshOnlineUserServer()
-	//}()
 	go func() {
-		// 客户端ws消息通道
-		proxy.StartWSServer(conf)
+		proxy.StartWSServer(conf)// 客户端ws消息通道
 	}()
 	// 客户端tcp消息通道
 	go func() {
@@ -63,12 +56,13 @@ func main(){
 		common.Sugar.Infof("nonsense get a signal %s", s.String())
 		switch s {
 		case syscall.SIGQUIT, syscall.SIGTERM, syscall.SIGINT:
-			if global.StorageClient != nil {
-				global.StorageClient.Close()
-				dao.Storage.Close()
+
+			if 	store.Storage != nil {
+				store.Storage.Close()
 			}
 			if global.TcpServer != nil{
 				global.TcpServer.Stop()
+				time.Sleep(time.Second)
 			}
 
 			return

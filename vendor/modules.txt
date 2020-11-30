@@ -9,6 +9,8 @@ github.com/armon/go-metrics
 github.com/dgrijalva/jwt-go
 # github.com/fatih/color v1.9.0
 github.com/fatih/color
+# github.com/go-basic/uuid v1.0.0
+github.com/go-basic/uuid
 # github.com/go-redis/redis v6.15.9+incompatible
 github.com/go-redis/redis
 github.com/go-redis/redis/internal

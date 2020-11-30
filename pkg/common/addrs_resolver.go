@@ -1,8 +1,8 @@
-package grpclib
+package common
 
 import (
-	"strings"
 	"google.golang.org/grpc/resolver"
+	"strings"
 )
 const Name = "addr"
 

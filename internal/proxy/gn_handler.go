@@ -7,9 +7,8 @@ import (
 	"github.com/golang/protobuf/proto"
 	"go.uber.org/zap"
 	"nonsense/internal/global"
-	"nonsense/internal/logic/cache"
-	"nonsense/internal/logic/dao"
-	"nonsense/internal/logic/service"
+	"nonsense/internal/service"
+	"nonsense/internal/store"
 	"nonsense/pkg/common"
 	pb "nonsense/pkg/proto"
 )
@@ -61,7 +60,7 @@ func (h *Handler) OnMessage(c *gn.Conn, bytes []byte) {
 func (*Handler) OnClose(c *gn.Conn, err error) {
 	common.Logger.Debug("close", zap.Any("data", c.GetData()), zap.Error(err))
 	data := c.GetData().(ConnData)
-	service.DeviceServiceInst.Offline(context.TODO(), data.AppId, data.UserId, data.DeviceId)
+	service.DeviceServiceInst.Offline(common.ContextWithRequstId(context.TODO()), data.AppId, data.UserId, data.DeviceId)
 	delete(global.UserFdMap[data.UserId],c.GetFd())
 }
 
@@ -74,7 +73,6 @@ func (*Handler) SignIn(c *gn.Conn, input pb.Input) {
 		return
 	}
 	var token string
-fmt.Println(signIn.AppId,signIn.UserId,signIn.DeviceId,signIn.Passwd,global.AppConfig.SrvDisc.ID,c.GetAddr())
 	token,err = service.AuthServiceInst.SignIn(context.TODO(), signIn.AppId,signIn.UserId,signIn.DeviceId,signIn.Passwd,global.AppConfig.SrvDisc.ID,c.GetAddr())
 
 	global.SendToClient(c, pb.PackageType_PT_SIGN_IN, input.RequestId, err, &pb.SignInResp{
@@ -95,12 +93,12 @@ fmt.Println(signIn.AppId,signIn.UserId,signIn.DeviceId,signIn.Passwd,global.AppC
 		UserId:   signIn.UserId,
 	}
 	c.SetData(data)
-	changeInfo := &cache.UserChangeInfo{
+	changeInfo := &store.UserChangeInfo{
 		Event: "online",
 		Uid:   signIn.UserId,
 		SrvId: global.AppConfig.SrvDisc.ID,
 	}
-	cache.PubOnlineUserChange(changeInfo)
+	store.PubOnlineUserChange(changeInfo)
 }
 
 // Sync 消息同步
@@ -113,11 +111,11 @@ func (*Handler) Sync(c *gn.Conn, input pb.Input) {
 	}
 
 	data := c.GetData().(ConnData)
-	resp, err := service.MessageServiceInst.ListByUserIdAndSeq(context.TODO(), data.AppId,data.UserId,sync.Seq)
+	resp, err := service.MessageServiceInst.ListByUserIdAndSeq(common.ContextWithRequstId(context.TODO()), data.AppId,data.UserId,sync.Seq)
 	if err != nil {
 		return
 	}
-	var message =&pb.SyncOutput{Messages: dao.MessagesToPB(resp)}
+	var message =&pb.SyncOutput{Messages: store.MessagesToPB(resp)}
 	global.SendToClient(c, pb.PackageType_PT_SYNC, input.RequestId, err, message)
 }
 
@@ -151,11 +149,11 @@ func (*Handler) MessageSend(c *gn.Conn, input pb.Input) {
 	}
 
 	data := c.GetData().(ConnData)
-	sender := dao.Sender{
+	sender := store.Sender{
 		AppId:      data.AppId,
 		SenderType: pb.SenderType_ST_USER,
 		SenderId:   data.UserId,
 		DeviceId:   data.DeviceId,
 	}
-	service.MessageServiceInst.Send(context.TODO(),sender,messageBody)
+	service.MessageServiceInst.Send(common.ContextWithRequstId(context.TODO()),sender,messageBody)
 }
