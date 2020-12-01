@@ -36,7 +36,7 @@ type StorageAdapter interface {
 
 	//group_user 群成员
 	AddMember(groupId int64, user *GroupUserInfo) error
-	GetMembers(appId, groupId int64) ([]*GroupUserInfo, error)
+	GetMembers(appId, groupId int64) ([]GroupUserInfo, error)
 	DeleteMember(appId int64, groupId int64, userId int64) error
 	UpdateMember(user *GroupUserInfo) error
 	ListUserJoinGroup(appId, userId int64) ([]Group, error)

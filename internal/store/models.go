@@ -53,19 +53,18 @@ type User struct {
 	AppId    int64  `json:"app_id"`   // app_id
 	UserId   int64  `json:"user_id"`  // 手机号
 	Passwd   string `json:"passwd"`   // 密码
+	Nickname      string    `json:"nickname"`   // 昵称
+	Sex           int32     `json:"sex"`        // 性别，1:男；2:女
 	Birthday string `json:"birthday"` //生日
 	Mobile   string `json:"birthday"` //手机号
 	Email    string `json:"email"`    //邮箱
-
-	Nickname      string    `json:"nickname"`   // 昵称
-	Sex           int32     `json:"sex"`        // 性别，1:男；2:女
 	AvatarUrl     string    `json:"avatar_url"` // 用户头像
 	Extra         string    `json:"extra"`      // 附加属性
 	CreateTime    time.Time `json:"-"`          // 创建时间
 	LastLoginTime time.Time `json:"-"`          // 更新时间
-	WeixinOpenid  string    `json:"weixin_openid"`
 	LastLoginIp   string    `json:"last_login_ip"`
 	RegisterIp    string    `json:"register_ip"`
+	WeixinOpenid  string    `json:"weixin_openid"`
 }
 
 const (

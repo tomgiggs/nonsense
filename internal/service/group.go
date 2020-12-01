@@ -133,14 +133,14 @@ func (self *GroupService) IsMember(appId, groupId, userId int64) (bool, error) {
 	return is, err
 }
 // GetUsers 获取群组的所有用户信息
-func (self *GroupService) GetUsers(appId, groupId int64) ([]*store.GroupUserInfo, error) {
+func (self *GroupService) GetUsers(appId, groupId int64) (*[]store.GroupUserInfo, error) {
 	users, err := store.CacheInst.GetGroupMembers(appId, groupId)
 	if err != nil {
 		return nil, err
 	}
 
 	if users != nil {
-		return users, nil
+		return &users, nil
 	}
 
 	users, err = store.Storage.GetMembers(appId, groupId)
@@ -154,7 +154,7 @@ func (self *GroupService) GetUsers(appId, groupId int64) ([]*store.GroupUserInfo
 	if err != nil {
 		return nil, err
 	}
-	return users, err
+	return &users, err
 }
 
 // 获取用户所加入的群组

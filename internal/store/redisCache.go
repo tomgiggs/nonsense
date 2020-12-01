@@ -138,13 +138,13 @@ func (rcc *Rcache) GetGroupUserKey(appId, groupId int64) string {
 }
 
 // 获取群组成员
-func (rcc *Rcache) GetGroupMembers(appId, groupId int64) (users []*GroupUserInfo, err error) {
+func (rcc *Rcache) GetGroupMembers(appId, groupId int64) (users []GroupUserInfo, err error) {
 	userMap, err1 := rcc.RedisClient.HGetAll(rcc.GetGroupUserKey(appId, groupId)).Result()
 	if err1 != nil {
 		return nil, common.WrapError(err1)
 	}
 
-	users = make([]*GroupUserInfo, 0, len(userMap))
+	userList := make([]GroupUserInfo, 0, len(userMap))
 	for _, v := range userMap {
 		var user GroupUserInfo
 		err = jsoniter.Unmarshal(common.Str2bytes(v), &user)
@@ -152,9 +152,9 @@ func (rcc *Rcache) GetGroupMembers(appId, groupId int64) (users []*GroupUserInfo
 			common.Sugar.Error(err)
 			continue
 		}
-		users = append(users, &user)
+		userList = append(userList, user)
 	}
-	return users, nil
+	return userList, nil
 }
 
 // 是否是群组成员
