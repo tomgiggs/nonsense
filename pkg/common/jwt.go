@@ -9,12 +9,12 @@ import (
 type JwtTokenInfo struct {
 	AppId    int64 `json:"app_id"`    // appId
 	UserId   int64 `json:"user_id"`   // 用户id
-	//UserName   int64 `json:"user_name"`   // 用户id
+	//UserName   int64 `json:"user_name"`   // 用户名称
 	Passwd   string `json:"passwd"`	//用户密码
 	//Expire   int64 `json:"expire"`    // 过期时间
 }
 
-const KeyInfo = "ABCDEFGsdwefwwefwfwe323HIJKLMNOPQRSTUVWXYZ1234567890!@#$%^&*()"
+
 
 func JwtEncry(info JwtTokenInfo) string {
 

@@ -2,7 +2,6 @@ package proxy
 
 import (
 	"context"
-	"nonsense/internal/global"
 	"nonsense/internal/service"
 	"nonsense/internal/store"
 	"nonsense/pkg/common"
@@ -121,7 +120,7 @@ func (m *ClientApiServer) GetUser(ctx context.Context, in *pb.GetUserReq) (*pb.G
 func (m *ClientApiServer) SendMessage(ctx context.Context, in *pb.SendMessageReq) (*pb.SendMessageResp,error) {
 	appId, userId, deviceId, err := common.GetCtxData(ctx)
 	rsp := &pb.SendMessageResp{
-		ResultCode: global.REQ_RESULT_CODE_OK,
+		ResultCode: common.REQ_RESULT_CODE_OK,
 	}
 	if err != nil {
 		return nil, err
@@ -143,7 +142,7 @@ func (m *ClientApiServer) SendMessage(ctx context.Context, in *pb.SendMessageReq
 // 创建群组
 func (m *ClientApiServer) CreateGroup(ctx context.Context, in *pb.CreateGroupReq) (*pb.CreateGroupResp, error) {
 	rsp := &pb.CreateGroupResp{
-		ResultCode: global.REQ_RESULT_CODE_FAIL,
+		ResultCode: common.REQ_RESULT_CODE_FAIL,
 	}
 	appId, _, _, err := common.GetCtxData(ctx)
 	if err != nil {
@@ -162,7 +161,7 @@ func (m *ClientApiServer) CreateGroup(ctx context.Context, in *pb.CreateGroupReq
 	if err != nil {
 		return rsp, err
 	}
-	rsp.ResultCode = global.REQ_RESULT_CODE_OK
+	rsp.ResultCode = common.REQ_RESULT_CODE_OK
 	return rsp, nil
 }
 

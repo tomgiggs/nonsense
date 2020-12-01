@@ -9,7 +9,6 @@ import (
 	"go.uber.org/zap"
 	"google.golang.org/grpc"
 	"net"
-	"net/http"
 	"nonsense/internal/config"
 	"nonsense/internal/global"
 	"nonsense/pkg/common"
@@ -29,6 +28,19 @@ func InitLogicDispatchClient(addr string) {
 		panic(err)
 	}
 	global.LogicDispatchMap[addr] = pb.NewLogicDispatchClient(conn)
+}
+func InitWsDispatchClient(addr string) {
+	if global.HttpDispathMap[addr] != nil {
+		return
+	}
+	conn, err := grpc.DialContext(context.TODO(), addr, grpc.WithInsecure(), grpc.WithUnaryInterceptor(DispatcherInterceptor))
+	if err != nil {
+		common.Sugar.Error(err)
+		panic(err)
+	}
+	global.WsDispatch = pb.NewLogicClientExtClient(conn)
+	global.HttpDispathMap[addr] = pb.NewLogicClientExtClient(conn)
+	global.HttpSrvList = append(global.HttpSrvList, addr)
 }
 
 func ServiceDiscover(conf *config.Access) {
@@ -51,6 +63,7 @@ func ServiceDiscover(conf *config.Access) {
 	for _, service := range services {
 		common.Logger.Info("service dis",zap.Any("node.Address:", service.Service.Address), zap.Any("node.Id:",service.Service.ID))
 		InitLogicDispatchClient(net.JoinHostPort(service.Service.Address, strconv.Itoa(service.Service.Port)))
+		InitWsDispatchClient(net.JoinHostPort(service.Service.Address, strconv.Itoa(service.Service.Port)))
 	}
 }
 
@@ -133,11 +146,8 @@ func StartDispatchRPCServer(conf *config.Access) {
 }
 
 
-func StartWSServer(conf *config.Access) {
-	http.HandleFunc("/ws", WsHandler)
-	common.Logger.Info("websocket服务已启动")
-	err := http.ListenAndServe(conf.WsAddr, nil)
-	if err != nil {
-		panic(err)
-	}
+func StartHttpServer(conf *config.Access) {
+	httpServer := NewApiServerV1(conf)
+	httpServer.InitRouter()
+	common.Sugar.Info("http 服务已启动")
 }

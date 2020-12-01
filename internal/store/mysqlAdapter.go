@@ -96,8 +96,9 @@ func (mya *MysqlAdapter) GetAppInfo(appId int64) (*App, error) {
 }
 
 func (mya *MysqlAdapter) AddDevice(device Device) (id int64, err error) {
-	res, err := mya.MysqlClient.Exec(`insert into device(device_id,app_id,type,brand,model,system_version,sdk_version,status,conn_id,user_ip) values(?,?,?,?,?,?,?,?,?,?)`, device.DeviceId, device.AppId, device.Type, device.Brand, device.Model, device.SystemVersion, device.SDKVersion, device.Status, "", 0)
+	res, err := mya.MysqlClient.Exec(`insert into device(device_id,app_id,type,brand,model,system_version,sdk_version,status,conn_id,user_ip) values(?,?,?,?,?,?,?,?,?,?)`, device.DeviceId, device.AppId, device.Type, device.Brand, device.Model, device.SystemVersion, device.SDKVersion, device.Status, "", "")
 	if err != nil {
+		common.Sugar.Error("add device error: ", err)
 		return 0, common.ErrDBError
 	}
 	id, err = res.LastInsertId()
@@ -119,10 +120,12 @@ func (mya *MysqlAdapter) GetDevice(deviceId int64) (*Device, error) {
 	err := row.Scan(&device.AppId, &device.UserId, &device.Type, &device.Brand, &device.Model, &device.SystemVersion, &device.SDKVersion,
 		&device.Status, &device.ConnId, &device.UserIp, &device.CreateTime, &device.UpdateTime)
 	if err != nil && err != sql.ErrNoRows {
+		common.Sugar.Error("db error: ", err)
 		return nil, common.ErrDBError
 	}
 
 	if err == sql.ErrNoRows {
+		common.Sugar.Error("db error: ", err)
 		return nil, nil
 	}
 
@@ -141,6 +144,7 @@ func (mya *MysqlAdapter) ListOnlineByUserId(appId, userId int64) ([]Device, erro
 		`select device_id,type,brand,model,system_version,sdk_version,status,conn_id,user_ip,create_time,update_time from device where app_id = ? and user_id = ? and status = ?`,
 		appId, userId, DeviceOnLine)
 	if err != nil {
+		common.Sugar.Error("db error: ", err)
 		return nil, common.ErrDBError
 	}
 
@@ -160,6 +164,7 @@ func (mya *MysqlAdapter) ListOnlineByUserId(appId, userId int64) ([]Device, erro
 func (mya *MysqlAdapter) UpdateDeviceStatus(deviceId int64, status int) error {
 	_, err := mya.MysqlClient.Exec("update device set status = ? where device_id = ?", status, deviceId)
 	if err != nil {
+		common.Sugar.Error("db error: ", err)
 		return common.ErrDBError
 	}
 	return nil
@@ -168,6 +173,7 @@ func (mya *MysqlAdapter) UpdateDeviceStatus(deviceId int64, status int) error {
 func (mya *MysqlAdapter) InitUserSeq(userSeq UserSeq) error {
 	_, err := mya.MysqlClient.Exec("insert into user_seq(app_id,user_id) values(?,?)", userSeq.AppId, userSeq.UserId)
 	if err != nil {
+		common.Sugar.Error("db error: ", err)
 		return common.ErrDBError
 	}
 	return nil
@@ -208,12 +214,14 @@ func (mya *MysqlAdapter) GetUserNextSeq(appId, userId, groupId int64) (int64, er
 	tx, err := mya.MysqlClient.Begin()
 	rsp, err := mya.MysqlClient.Exec("update user_seq set receive_seq = receive_seq+1 where group_id=? and app_id=? and  user_id = ?", groupId, appId, userId)
 	if err != nil {
+		common.Sugar.Error("db error: ", err)
 		err = tx.Rollback()
 		return 0, common.ErrDBError
 	}
 	err = tx.Commit()
 	updateNum, err := rsp.RowsAffected()
 	if err != nil {
+		common.Sugar.Error("db error: ", err)
 		return 0, err
 	}
 	if updateNum == 0 {
@@ -259,6 +267,7 @@ func (mya *MysqlAdapter) GetGroup(appId, groupId int64) (*Group, error) {
 	}
 	err := row.Scan(&group.Name, &group.Introduction, &group.UserNum, &group.Type, &group.Extra, &group.CreateTime, &group.UpdateTime)
 	if err != nil && err != sql.ErrNoRows {
+		common.Sugar.Error("db error: ", err)
 		return nil, common.ErrDBError
 	}
 
@@ -276,6 +285,7 @@ func (mya *MysqlAdapter) AddMember(groupId int64, user *GroupUserInfo) error {
 	_, err := mya.MysqlClient.Exec("insert ignore into group_user(app_id,group_id,user_id,label,extra) values(?,?,?,?,?)",
 		user.AppId, user.GroupId, user.UserId, user.Label, user.UserExtra)
 	if err != nil {
+		common.Sugar.Error("db error: ", err)
 		return common.ErrDBError
 	}
 	return nil
@@ -287,6 +297,7 @@ func (mya *MysqlAdapter) GetMembers(appId, groupId int64) ([]*GroupUserInfo, err
 		from group_user
 		where app_id = ? and group_id = ?`, appId, groupId)
 	if err != nil {
+		common.Sugar.Error("db error: ", err)
 		return nil, common.ErrDBError
 	}
 	groupUsers := make([]*GroupUserInfo, 0, 5)
@@ -306,6 +317,7 @@ func (mya *MysqlAdapter) DeleteMember(appId int64, groupId int64, userId int64) 
 	_, err := mya.MysqlClient.Exec("delete from group_user where app_id = ? and group_id = ? and user_id = ?",
 		appId, groupId, userId)
 	if err != nil {
+		common.Sugar.Error("db error: ", err)
 		return common.ErrDBError
 	}
 	return nil
@@ -315,6 +327,7 @@ func (mya *MysqlAdapter) UpdateMember(user *GroupUserInfo) error {
 	_, err := mya.MysqlClient.Exec("update group_user set label = ?,extra = ? where app_id = ? and group_id = ? and user_id = ?",
 		user.Label, user.UserExtra, user.AppId, user.GroupId, user.UserId)
 	if err != nil {
+		common.Sugar.Error("db error: ", err)
 		return common.ErrDBError
 	}
 	return nil
@@ -328,6 +341,7 @@ func (mya *MysqlAdapter) ListUserJoinGroup(appId, userId int64) ([]Group, error)
 			"where u.app_id = ? and u.user_id = ?",
 		appId, userId)
 	if err != nil {
+		common.Sugar.Error("db error: ", err)
 		return nil, common.ErrDBError
 	}
 	var groups []Group
@@ -335,6 +349,7 @@ func (mya *MysqlAdapter) ListUserJoinGroup(appId, userId int64) ([]Group, error)
 	for rows.Next() {
 		err := rows.Scan(&group.GroupId, &group.Name, &group.Introduction, &group.UserNum, &group.Type, &group.Extra, &group.CreateTime, &group.UpdateTime)
 		if err != nil {
+			common.Sugar.Error("db error: ", err)
 			return nil, common.ErrDBError
 		}
 		groups = append(groups, group)
@@ -348,6 +363,7 @@ func (mya *MysqlAdapter) AddMessage(message *Message) error {
 	_, err := mya.MysqlClient.Exec(sqlraw, message.AppId, message.ObjectType, message.ObjectId, message.MessageId, message.SenderType, message.SenderId,
 		message.SenderDeviceId, message.ReceiverType, message.ReceiverId, message.ToUserIds, message.Type, message.Content, message.Seq, message.SendTime)
 	if err != nil {
+		common.Sugar.Error("db error: ", err)
 		return common.ErrDBError
 	}
 	return nil
@@ -362,6 +378,7 @@ func (mya *MysqlAdapter) ListMsgBySeq(appId, receiverId, seq int64) ([]Message, 
 		to_user_ids,type,content,seq,send_time from message where app_id = ? and receiver_id = ? and seq > ? order by seq limit  300`
 	rows, err := mya.MysqlClient.Query(sqlraw, appId, receiverId, seq)
 	if err != nil {
+		common.Sugar.Error("db error: ", err)
 		return nil, common.ErrDBError
 	}
 
@@ -371,6 +388,7 @@ func (mya *MysqlAdapter) ListMsgBySeq(appId, receiverId, seq int64) ([]Message, 
 		err := rows.Scan(&message.AppId, &message.ObjectType, &message.ObjectId, &message.MessageId, &message.SenderType, &message.SenderId,
 			&message.SenderDeviceId, &message.ReceiverType, &message.ReceiverId, &message.ToUserIds, &message.Type, &message.Content, &message.Seq, &message.SendTime)
 		if err != nil {
+			common.Sugar.Error("db error: ", err)
 			return nil, common.ErrDBError
 		}
 		messages = append(messages, *message)

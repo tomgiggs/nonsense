@@ -1,4 +1,4 @@
-package global
+package common
 
 import (
 	"fmt"
@@ -36,3 +36,4 @@ var (
 	DB_ERROR = fmt.Errorf("query db data failed")
 )
 
+const KeyInfo = "ABCDEFGsdwefwwefwfwe323HIJKLMNOPQRSTUVWXYZ1234567890!@#$%^&*()"

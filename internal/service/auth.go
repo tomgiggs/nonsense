@@ -3,6 +3,7 @@ package service
 import (
 	"context"
 	"fmt"
+	"nonsense/internal/global"
 	"nonsense/internal/store"
 	"nonsense/pkg/common"
 )
@@ -30,8 +31,9 @@ func (self *AuthService) SignIn(ctx context.Context, appId, userId int64, device
 		UserId: userId,
 		Passwd: passwd,
 		AppId: appId,
-
 	}
+	global.UserTokenInfos[userId] = &tokenInfo
+
 	tokenStr := common.JwtEncry(tokenInfo)
 
 	// 标记用户在设备上登录
@@ -71,6 +73,7 @@ func (self *AuthService) VerifyToken(ctx context.Context, appId, userId int64, p
 
 	return nil
 }
+
 func (self *AuthService) IsTokenExpire(ctx context.Context, token string) error {
 
 	_,succ := common.JwtDecry(token)

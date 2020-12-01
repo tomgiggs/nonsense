@@ -11,6 +11,12 @@ import (
 	"unsafe"
 )
 
+//ip转地址字符串
+func InetNtoA(ip int64) string {
+	return fmt.Sprintf("%d.%d.%d.%d",
+		byte(ip>>24), byte(ip>>16), byte(ip>>8), byte(ip))
+}
+
 // 格式化时间
 func FormatTime(time time.Time) string {
 	return time.Format("2006-01-02 15:04:05")

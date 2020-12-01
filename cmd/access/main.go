@@ -41,11 +41,14 @@ func main(){
 		proxy.StartClientRpcServer(conf)
 	}()
 	go func() {
-		proxy.StartWSServer(conf)// 客户端ws消息通道
+		proxy.StartHttpServer(conf)// 客户端ws消息通道
 	}()
 	// 客户端tcp消息通道
 	go func() {
 		proxy.StartTCPServer(conf)
+	}()
+	go func() {
+		proxy.InitWsDispatchClient(conf.ClientRpcAddr)
 	}()
 
 	//进程退出处理

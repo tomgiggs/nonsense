@@ -30,16 +30,16 @@ type ConsulConf struct {
 	ID	string
 }
 type Access struct {
-	AppId string
-	WsAddr string
-	TcpPort int
-	TcpAddr string
+	AppId         string
+	HttpAddr      string
+	TcpPort       int
+	TcpAddr       string
 	LocalDispAddr string
-	LocalDisPort	int
+	LocalDisPort  int
 	ClientRpcAddr string
-	SrvDisc  *ConsulConf
-	Storage *StorageConf
-	LogConfig *LogConf
+	SrvDisc       *ConsulConf
+	Storage       *StorageConf
+	LogConfig     *LogConf
 }
 var (
 	confPath  string
@@ -70,12 +70,12 @@ func Init()(accessConf *Access,err error){
 }
 func Default() *Access {
 	return &Access{
-		AppId: "",
-		WsAddr: ":18080",
-		TcpAddr:":18081",
-		TcpPort: 18000,
+		AppId:         "",
+		HttpAddr:      ":18080",
+		TcpAddr:       ":18081",
+		TcpPort:       18000,
 		ClientRpcAddr: "",
-		LocalDisPort:18002,
+		LocalDisPort:  18002,
 		LocalDispAddr: "18082",
 		Storage: &StorageConf{
 			MySQL: "root:123@tcp(localhost:3306)/gim?charset=utf8&parseTime=true",

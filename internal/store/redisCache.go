@@ -4,7 +4,6 @@ import (
 	"github.com/go-redis/redis"
 	jsoniter "github.com/json-iterator/go"
 	"nonsense/internal/config"
-	"nonsense/internal/global"
 	"nonsense/pkg/common"
 	"strconv"
 	"time"
@@ -41,7 +40,7 @@ func NewRcache(conf *config.Access) *Rcache {
 // app
 func (rcc *Rcache) GetApp(appId int64) (*App, error) {
 	var app App
-	err := rcc.GetCache(global.APP_CACHE_KEY+strconv.FormatInt(appId, 10), &app)
+	err := rcc.GetCache(common.APP_CACHE_KEY+strconv.FormatInt(appId, 10), &app)
 	if err != nil && err != redis.Nil {
 		return nil, common.ErrCacheError
 	}
@@ -53,7 +52,7 @@ func (rcc *Rcache) GetApp(appId int64) (*App, error) {
 }
 
 func (rcc *Rcache) SetApp(app *App) error {
-	err := rcc.SetCache(global.APP_CACHE_KEY+strconv.FormatInt(app.Id, 10), app, global.APP_CACHE_EXPIRE)
+	err := rcc.SetCache(common.APP_CACHE_KEY+strconv.FormatInt(app.Id, 10), app, common.APP_CACHE_EXPIRE)
 	if err != nil {
 		return common.ErrCacheError
 	}
@@ -62,11 +61,11 @@ func (rcc *Rcache) SetApp(app *App) error {
 
 //user_seq
 func (rcc *Rcache) GetUserSeqKey(appId, userId int64) string {
-	return global.USER_SEQ_KEY_PREFIX + strconv.FormatInt(appId, 10) + ":" + strconv.FormatInt(userId, 10)
+	return common.USER_SEQ_KEY_PREFIX + strconv.FormatInt(appId, 10) + ":" + strconv.FormatInt(userId, 10)
 }
 
 func (rcc *Rcache) GetGroupSeqKey(appId, groupId int64) string {
-	return global.GROUP_SEQ_KEY_PREFIX + strconv.FormatInt(appId, 10) + ":" + strconv.FormatInt(groupId, 10)
+	return common.GROUP_SEQ_KEY_PREFIX + strconv.FormatInt(appId, 10) + ":" + strconv.FormatInt(groupId, 10)
 }
 
 func (rcc *Rcache) IsUserSeqExist(key string) (int64, error) {
@@ -102,7 +101,7 @@ func (rcc *Rcache) InitGroupSeq(key string, seq int64) error {
 
 //群组缓存
 func (rcc *Rcache) GetGroupKey(appId, groupId int64) string {
-	return global.GROUP_CACHE_KEY + strconv.FormatInt(appId, 10) + ":" + strconv.FormatInt(groupId, 10)
+	return common.GROUP_CACHE_KEY + strconv.FormatInt(appId, 10) + ":" + strconv.FormatInt(groupId, 10)
 }
 
 func (rcc *Rcache) GetGroup(appId, groupId int64) (*Group, error) {
@@ -118,7 +117,7 @@ func (rcc *Rcache) GetGroup(appId, groupId int64) (*Group, error) {
 }
 
 func (rcc *Rcache) SetGroup(group *Group) error {
-	err := rcc.SetCache(rcc.GetGroupKey(group.AppId, group.GroupId), group, global.GROUP_CACHE_EXPIRE)
+	err := rcc.SetCache(rcc.GetGroupKey(group.AppId, group.GroupId), group, common.GROUP_CACHE_EXPIRE)
 	if err != nil {
 		return common.ErrCacheError
 	}
@@ -135,7 +134,7 @@ func (rcc *Rcache) DelGroup(appId, groupId int64) error {
 
 //群组用户缓存
 func (rcc *Rcache) GetGroupUserKey(appId, groupId int64) string {
-	return global.GROUP_USER_CACHE_KEY + strconv.FormatInt(appId, 10) + ":" + strconv.FormatInt(groupId, 10)
+	return common.GROUP_USER_CACHE_KEY + strconv.FormatInt(appId, 10) + ":" + strconv.FormatInt(groupId, 10)
 }
 
 // 获取群组成员
@@ -208,7 +207,7 @@ func (rcc *Rcache) DelGroupMember(appId, groupId int64, userId int64) error {
 
 //用户缓存
 func (rcc *Rcache) GetUserKey(appId, userId int64) string {
-	return global.USER_CACHE_KEY + strconv.FormatInt(appId, 10) + ":" + strconv.FormatInt(userId, 10)
+	return common.USER_CACHE_KEY + strconv.FormatInt(appId, 10) + ":" + strconv.FormatInt(userId, 10)
 }
 
 // 获取用户缓存
@@ -226,7 +225,7 @@ func (rcc *Rcache) GetUser(appId, userId int64) (*User, error) {
 
 // 设置用户缓存
 func (rcc *Rcache) SetUser(user User) error {
-	err := rcc.SetCache(rcc.GetUserKey(user.AppId, user.UserId), user, global.USER_CACHE_EXPIRE)
+	err := rcc.SetCache(rcc.GetUserKey(user.AppId, user.UserId), user, common.USER_CACHE_EXPIRE)
 	if err != nil {
 		return common.ErrCacheError
 	}
@@ -242,14 +241,14 @@ func (rcc *Rcache) DelUser(appId, userId int64) error {
 	return nil
 }
 func (rcc *Rcache) GetUserServerFromRedis(uid int64) map[string]string {
-	result := rcc.RedisClient.HGetAll(global.USER_SERVER_MAP_KEY_PREFIX + strconv.FormatInt(uid, 10))
+	result := rcc.RedisClient.HGetAll(common.USER_SERVER_MAP_KEY_PREFIX + strconv.FormatInt(uid, 10))
 	data, _ := result.Result()
 	return data
 }
 
 //device
 func (rcc *Rcache) GetDeviceKey(appId, userId int64) string {
-	return global.DEVICE_CACHE_KEY + strconv.FormatInt(appId, 10) + ":" + strconv.FormatInt(userId, 10)
+	return common.DEVICE_CACHE_KEY + strconv.FormatInt(appId, 10) + ":" + strconv.FormatInt(userId, 10)
 }
 
 // Get 获取指定用户的所有在线设备
@@ -268,7 +267,7 @@ func (rcc *Rcache) GetDevice(appId, userId int64) ([]Device, error) {
 
 // Set 将指定用户的所有在线设备存入缓存
 func (rcc *Rcache) SetDevice(appId, userId int64, devices []Device) error {
-	err := rcc.SetCache(rcc.GetDeviceKey(appId, userId), devices, global.DEVICE_CACHE_EXPIRE)
+	err := rcc.SetCache(rcc.GetDeviceKey(appId, userId), devices, common.DEVICE_CACHE_EXPIRE)
 	if err != nil {
 		return common.ErrCacheError
 	}

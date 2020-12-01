@@ -3,10 +3,14 @@ package proxy
 import (
 	"context"
 	"encoding/json"
+	"github.com/bitly/go-simplejson"
+	"github.com/gin-gonic/gin"
+	"github.com/golang/protobuf/proto"
 	"github.com/gorilla/websocket"
 	"google.golang.org/grpc/codes"
 	"google.golang.org/grpc/status"
 	"net/http"
+	"nonsense/internal/config"
 	"nonsense/internal/global"
 	"nonsense/pkg/common"
 	pb "nonsense/pkg/proto"
@@ -21,9 +25,141 @@ var upgrader = websocket.Upgrader{
 	},
 }
 
+func PB2JSON(pbMsg proto.Message) (jsonStr string) {
+	json_str, err := json.Marshal(pbMsg)
+	if err == nil {
+		jsonStr = string(json_str)
+	}
+	return
+}
+func GetPutJson(req *gin.Context) *simplejson.Json{
+	bodyByte := make([]byte,1000)
+	_,_ = req.Request.Body.Read(bodyByte)
+	js, err := simplejson.NewJson([]byte(bodyByte))
 
+	if err != nil {
+		return nil
+	}
+	return js
+}
+func GetUserInfo(token string) (*common.JwtTokenInfo){
+	if token==""{
+		return nil
+	}
+	info,succ := common.JwtDecry(token)
+	if !succ {
+		return nil
+	}
+	return &info
+}
 
-func WsHandler(w http.ResponseWriter, r *http.Request) {
+// 认证中间件
+func AuthMiddleWare() gin.HandlerFunc {
+	return func(c *gin.Context) {
+		userInfo := GetUserInfo(c.Request.Header.Get("Authorization"))
+		if userInfo == nil {
+			c.String(http.StatusUnauthorized,"token invalid")
+			c.Abort()
+		}
+		c.Set("user_info",userInfo)// 设置变量到Context的key中，可以通过Get()取
+	}
+}
+
+func PostReq(c *gin.Context,resp proto.Message,err error){
+	if err != nil {
+		status, _ := status.FromError(err)
+		c.JSON(http.StatusBadRequest, gin.H{
+			"err_code":   status.Code(),
+			"err_msg":     status.Message(),
+		})
+		return
+	}
+	c.JSON(http.StatusOK,resp)
+}
+
+type ApiServerV1 struct {
+	conf *config.Access
+
+}
+func NewApiServerV1(c *config.Access) *ApiServerV1{
+	return &ApiServerV1{
+		conf: c,
+	}
+}
+
+func (v1 *ApiServerV1)InitRouter(){
+	router := gin.Default()
+	router.GET("/login",v1.Login)//websocket收发消息处理
+	router.PUT("/user/create",v1.AddUser)
+	r1 := router.Group("/v1")
+	r1.Use(AuthMiddleWare())
+	{
+		r1.GET("/ws",v1.WsClient)//websocket收发消息处理
+		r1.PUT("/device/register",v1.RegisterDevice)
+		r1.DELETE("/device/delete",v1.DeleteDevice)
+		r1.GET("/device/list",v1.GetDeviceList)
+		//user
+
+		r1.POST("/user/update",v1.UpdateUser)
+		r1.GET("/user/get",v1.GetUser)
+		r1.GET("/user/group/list",v1.GetUserGroups)
+
+		//group
+		r1.GET("/group/create",v1.CreateGroup)
+		r1.POST("/group/update",v1.UpdateGroup)
+		r1.GET("/group/get",v1.GetGroup)
+		r1.DELETE("/group/delete",v1.DeleteGroup)
+		//group member
+		r1.PUT("/group_member/add",v1.AddGroupMember)
+		r1.POST("/group_member/update",v1.UpdateGroupMember)
+		r1.DELETE("/group_member/delete",v1.DeleteGroupMember)
+		r1.GET("/group_member/list",v1.GetGroupMembers)
+
+	}
+	router.Run(v1.conf.HttpAddr)
+}
+
+func (v1 *ApiServerV1) Close(){
+
+}
+func (v1 *ApiServerV1)Login(c *gin.Context){
+	body := GetPutJson(c)
+	if body ==nil {
+		c.String(http.StatusBadRequest,"nil body")
+		return
+	}
+	appIdStr := body.Get("app_id").MustString()
+	appId,_ := strconv.ParseInt(appIdStr, 10, 64)
+	userIdStr := body.Get("user_id").MustString()
+	userId,_ := strconv.ParseInt(userIdStr,10,64)
+	passwd :=  body.Get("password").MustString()
+	req := &pb.SignInReq{
+		AppId: appId,
+		UserId: userId,
+		Passwd: passwd,
+		ConnId: global.AppConfig.AppId,
+		DeviceId: 0,
+		UserIp: c.Request.RemoteAddr,
+	}
+	userBasicInfo,_ := c.Get("user_info")
+	resp, err := global.WsDispatch.SignIn(common.GetContext(userBasicInfo.(common.JwtTokenInfo)),req)
+	if err != nil {
+		status, _ := status.FromError(err)
+		c.JSON(http.StatusBadRequest, gin.H{
+			"err_code":   status.Code(),
+			"err_msg":     status.Message(),
+		})
+		return
+	}
+	c.JSON(http.StatusOK,resp)
+}
+func (v1 *ApiServerV1)WsClient(c *gin.Context) {
+	if ! c.IsWebsocket() {
+		c.String(http.StatusOK, "====not websocket request====")
+	}
+	w,r := c.Writer,c.Request
+	upgrader := websocket.Upgrader{}
+
 	appId, _ := strconv.ParseInt(r.Header.Get(common.CtxAppId), 10, 64)
 	userId, _ := strconv.ParseInt(r.Header.Get(common.CtxUserId), 10, 64)
 	deviceId, _ := strconv.ParseInt(r.Header.Get(common.CtxDeviceId), 10, 64)
@@ -76,6 +212,108 @@ func WsHandler(w http.ResponseWriter, r *http.Request) {
 	ctx.DoConn()
 }
 
+func(v1 *ApiServerV1) RegisterDevice(c *gin.Context) {
+	body := GetPutJson(c)
+	if body ==nil {
+		c.String(http.StatusBadRequest,"nil body")
+		return
+	}
+	appIdStr := body.Get("app_id").MustString()
+	appId,_ := strconv.ParseInt(appIdStr, 10, 64)
+	brand := body.Get("brand").MustString()
+	model :=  body.Get("model").MustString()
+	sysVer :=  body.Get("system_version").MustString()
+	sdkVer := body.Get("sdk_version").MustString()
+	req := &pb.RegisterDeviceReq{
+		AppId: appId,
+		Brand: brand,
+		Model: model,
+		SystemVersion: sysVer,
+		SdkVersion: sdkVer,
+		Type: int32(2),
+	}
+	userBasicInfo,_ := c.Get("user_info")
+	remoteSrv := global.GetHttpDispathServer(c.Request.RemoteAddr)
+	if remoteSrv ==nil {
+		c.String(http.StatusInternalServerError,"远程服务不可用")
+		c.Abort()
+	}
+	resp, err := remoteSrv.RegisterDevice(common.GetContext(userBasicInfo.(common.JwtTokenInfo)),req)
+	PostReq(c,resp,err)
 
+}
+func(v1 *ApiServerV1) DeleteDevice(c *gin.Context) {
+	//deviceId := c.Param("device_id")
+	c.String(http.StatusOK, "to be design...")
+}
+func(v1 *ApiServerV1) GetDeviceList(c *gin.Context) {
+	c.String(http.StatusOK, "to be design...")
 
+}
+
+func(v1 *ApiServerV1) AddUser(c *gin.Context) {
+	body := GetPutJson(c)
+	if body ==nil {
+		c.String(http.StatusBadRequest,"nil body")
+		return
+	}
+	//appIdStr := body.Get("app_id").MustString()
+	//appId,_ := strconv.ParseInt(appIdStr, 10, 64)
+	name := body.Get("nick_name").MustString()
+	avatar :=  body.Get("avatar_url").MustString()
+	extra :=  body.Get("system_version").MustString()
+	sexStr := body.Get("sex").MustString()
+	gender,_ := strconv.Atoi(sexStr)
+
+	req := &pb.AddUserReq{
+		User: &pb.User{
+			UserId: 1,
+			Nickname: name,
+			Sex: int32(gender),
+			AvatarUrl: avatar,
+			Extra: extra,
+		},
+	}
+	resp, err := global.WsDispatch.AddUser(common.SimpleContext(),req)
+	PostReq(c,resp,err)
+
+}
+func(v1 *ApiServerV1) UpdateUser(c *gin.Context) {
+	c.String(http.StatusOK, "to be design...")
+
+}
+func(v1 *ApiServerV1) GetUser(c *gin.Context) {
+	c.String(http.StatusOK, "to be design...")
+
+}
+func(v1 *ApiServerV1) GetUserGroups(c *gin.Context) {
+	c.String(http.StatusOK, "to be design...")
+
+}
+
+func(v1 *ApiServerV1) CreateGroup(c *gin.Context) {
+	c.String(http.StatusOK, "to be design...")
+}
+func(v1 *ApiServerV1) UpdateGroup(c *gin.Context) {
+	c.String(http.StatusOK, "to be design...")
+}
+func(v1 *ApiServerV1) GetGroup(c *gin.Context) {
+	c.String(http.StatusOK, "to be design...")
+}
+func(v1 *ApiServerV1) DeleteGroup(c *gin.Context) {
+	c.String(http.StatusOK, "to be design...")
+}
+
+func(v1 *ApiServerV1) AddGroupMember(c *gin.Context) {
+	c.String(http.StatusOK, "to be design...")
+}
+func(v1 *ApiServerV1) UpdateGroupMember(c *gin.Context) {
+	c.String(http.StatusOK, "to be design...")
+}
+func(v1 *ApiServerV1) DeleteGroupMember(c *gin.Context) {
+	c.String(http.StatusOK, "to be design...")
+}
+func(v1 *ApiServerV1) GetGroupMembers(c *gin.Context) {
+	c.String(http.StatusOK, "to be design...")
+}
 

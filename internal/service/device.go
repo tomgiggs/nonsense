@@ -3,7 +3,6 @@ package service
 import (
 	"context"
 	"nonsense/internal/store"
-	"nonsense/pkg/common"
 )
 
 const (
@@ -18,18 +17,18 @@ func InitDeviceService()*DeviceService {
 }
 // Register 注册设备
 func (*DeviceService) Register(ctx context.Context, device store.Device) (int64, error) {
-	app, err := AppServiceInst.Get(ctx, device.AppId)
-	if err != nil {
-		common.Sugar.Error(err)
-		return 0, err
-	}
+	//app, err := AppServiceInst.Get(ctx, device.AppId)
+	//if err != nil {
+	//	common.Sugar.Error(err)
+	//	return 0, err
+	//}
+	//
+	//if app == nil {
+	//	return 0, common.ErrBadRequest
+	//}
+	//var deviceId int64
 
-	if app == nil {
-		return 0, common.ErrBadRequest
-	}
-	var deviceId int64
-
-	deviceId,err = store.Storage.AddDevice(device)
+	deviceId,err := store.Storage.AddDevice(device)
 	if err != nil {
 		return 0, err
 	}

@@ -29,6 +29,7 @@ var (
 	ErrUserNotExist      = newError(pb.ErrCode_EC_USER_NOT_EXIST, "error user not exist")             // 用户不存在
 )
 
+
 func newError(code pb.ErrCode, message string) error {
 	return status.New(codes.Code(code), message).Err()
 }

@@ -1,11 +1,11 @@
 
 region="shanghai"
-WsAddr="127.0.0.1:18000"
+HttpAddr="127.0.0.1:18000"
 TcpPort=18001
 TcpAddr="127.0.0.1:18001"
 LocalDispAddr=":18005"
 LocalDisPort=18005
-ClientRpcAddr =""
+ClientRpcAddr ="127.0.0.1:18006"
 AppId = "App-01"
 
 [Storage]

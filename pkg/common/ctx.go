@@ -22,13 +22,29 @@ func ContextWithRequstId(ctx context.Context) context.Context {
 	//ctx := metadata.NewOutgoingContext(context.Background(), md)
 	return metadata.NewOutgoingContext(ctx, metadata.Pairs(CtxRequestId, reqId))
 }
+func SimpleContext() context.Context {
+	reqId := uuid.New()
+	return metadata.NewOutgoingContext(context.TODO(), metadata.Pairs(CtxRequestId, reqId))
+}
+
+func GetContext(userInfo JwtTokenInfo) context.Context {
+	reqId := uuid.New()
+	md := metadata.Pairs(CtxRequestId, reqId)
+	md.Append(CtxUserId,strconv.FormatInt(userInfo.UserId,10))
+	md.Append(CtxAppId,strconv.FormatInt(userInfo.AppId,10))
+	ctx := metadata.NewOutgoingContext(context.Background(), md)
+	return ctx
+}
 
 // 获取ctx的请求id
 func GetCtxRequstId(ctx context.Context) string {
 	md,ok := metadata.FromOutgoingContext(ctx)
 	//md,ok := metadata.FromIncomingContext(ctx)
 	if !ok {
-		return ""
+		md,ok = metadata.FromIncomingContext(ctx)
+		if !ok {
+			return ""
+		}
 	}
 
 	requstIds, ok := md[CtxRequestId]

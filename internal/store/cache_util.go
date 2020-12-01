@@ -2,17 +2,16 @@ package store
 
 import (
 	"encoding/json"
-	"nonsense/internal/global"
 	"nonsense/pkg/common"
 	"strconv"
 )
 
 //user discovery
 func RefreshOnlineUserServer(){
-	SubOnlineUserChange(global.USER_LOGIN_SERVER_KEY, func(info string) {
+	SubOnlineUserChange(common.USER_LOGIN_SERVER_KEY, func(info string) {
 		changeInfo := new(UserChangeInfo)
 		json.Unmarshal([]byte(info),&changeInfo)
-		if changeInfo.Event == global.USER_CHANGE_EVENT_OFFLINE{
+		if changeInfo.Event == common.USER_CHANGE_EVENT_OFFLINE {
 			if _,ok := UserServerMap[changeInfo.Uid][changeInfo.SrvId];ok{
 				delete(UserServerMap[changeInfo.Uid],changeInfo.SrvId)
 			}
@@ -25,12 +24,12 @@ func RefreshOnlineUserServer(){
 func PubOnlineUserChange(data *UserChangeInfo){
 
 	jsonStr,_ := json.Marshal(data)
-	err := StorageClient.RedisClient.HSet(global.USER_SERVER_MAP_KEY_PREFIX+strconv.FormatInt(data.Uid,10),data.SrvId,1).Err()
+	err := StorageClient.RedisClient.HSet(common.USER_SERVER_MAP_KEY_PREFIX+strconv.FormatInt(data.Uid,10),data.SrvId,1).Err()
 	if err != nil {
 		common.Sugar.Error("更新用户所在服务器信息失败:",err)
 	}
 
-	sub := StorageClient.RedisClient.Subscribe(global.USER_LOGIN_SERVER_KEY)
+	sub := StorageClient.RedisClient.Subscribe(common.USER_LOGIN_SERVER_KEY)
 	defer sub.Close()
 	err = StorageClient.RedisClient.Publish("gim-user-login-server",string(jsonStr)).Err()
 	if err != nil {
