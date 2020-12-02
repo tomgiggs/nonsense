@@ -41,8 +41,8 @@ cd proto
 protoc --go_out=. --go_opt=paths=source_relative  --go-grpc_out=. --go-grpc_opt=paths=source_relative  service.proto
 
 proto生成js代码：
-protoc.exe --js_out=import_style=commonjs,binary:. message.proto
-pbjs -t json-module -w commonjs -o scripts/proto.js pkg/proto/*.proto
+protoc.exe --js_out=import_style=commonjs,binary:. message.proto##生成message_pb.js文件
+pbjs -t json-module -w commonjs -o scripts/proto.js pkg/proto/*.proto## 生成proto.js文件
 ```
 ## goland远程调试
 1. 安装dlv工具
