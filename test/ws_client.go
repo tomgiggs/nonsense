@@ -15,16 +15,15 @@ import (
 )
 
 func StartWsclient() {
-	client := TcpClient{
-		AppId: 1,
-		UserId: 2,
+	client := WSClient{
+		AppId:    1,
+		UserId:   2,
 		DeviceId: 3,
-		Seq: 1,
+		Seq:      1,
 	}
 	client.Start()
 	select {}
 }
-
 
 type WSClient struct {
 	AppId    int64
@@ -36,7 +35,8 @@ type WSClient struct {
 }
 
 func (c *WSClient) Start() {
-	u := url.URL{Scheme: "ws", Host: "localhost:8081", Path: "/ws"}
+	//u := url.URL{Scheme: "ws", Host: "localhost:8081", Path: "/ws"}
+	u := url.URL{Scheme: "ws", Host: "localhost:16001", Path: "/rtc"}
 
 	header := http.Header{}
 	header.Set(common.CtxAppId, strconv.FormatInt(c.AppId, 10))
@@ -58,10 +58,19 @@ func (c *WSClient) Start() {
 	}
 	fmt.Println(string(bytes))
 	c.Conn = conn
-
-	c.SyncTrigger()
-	go c.Heartbeat()
-	go c.Receive()
+	offlineMsg := &rtcClientMsg{
+		Cmd:    "enterRoom",
+		RoomID: 300,
+		UserId: 200,
+		Msg:    "user offline",
+	}
+	err = c.Conn.WriteJSON(offlineMsg)
+	if err != nil {
+		fmt.Println("send msg err", err)
+	}
+	//c.SyncTrigger()
+	//go c.Heartbeat()
+	//go c.Receive()
 }
 
 func (c *WSClient) Output(pt pb.PackageType, requestId string, message proto.Message) {
@@ -122,7 +131,6 @@ func (c *WSClient) HandlePackage(bytes []byte) {
 		fmt.Println(err)
 		return
 	}
-
 	switch output.Type {
 	case pb.PackageType_PT_HEARTBEAT:
 		fmt.Println("心跳响应")
@@ -143,10 +151,10 @@ func (c *WSClient) HandlePackage(bytes []byte) {
 		}
 
 		ack := pb.MessageACKReq{
-			AppId: c.AppId,
-			GroupId: 0,
-			UserId: c.UserId,
-			Seq:   c.Seq,
+			AppId:       c.AppId,
+			GroupId:     0,
+			UserId:      c.UserId,
+			Seq:         c.Seq,
 			ReceiveTime: common.UnixMilliTime(time.Now()),
 		}
 		c.Output(pb.PackageType_PT_SYNC, output.RequestId, &ack)

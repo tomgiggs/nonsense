@@ -31,8 +31,26 @@ func WsClient(w http.ResponseWriter, r *http.Request) {
 	ctx := NewWSConnContext(conn, 1, 2, 3)
 	ctx.DoConn()
 }
+func RtcClient(w http.ResponseWriter, r *http.Request) {
+	upgrader := &websocket.Upgrader{
+		ReadBufferSize:4000,
+		WriteBufferSize:1024,
+		CheckOrigin: func(r *http.Request) bool {
+			return true
+		},
+	}
+	conn, err := upgrader.Upgrade(w, r, nil)
+	if err != nil {
+		common.Sugar.Error(err)
+		return
+	}
+	 rmg := NewRoomManager()
+	ctx := NewRtcContext(rmg,conn, 1, 2 )
+	ctx.Serve()
+}
 func StartWsServer(){
 	http.HandleFunc("/ws", WsClient)
+	http.HandleFunc("/rtc",RtcClient)
 	if err := http.ListenAndServe("127.0.0.1:16001", nil); err != nil {
 		log.Fatal("start http server err:",err)
 	}

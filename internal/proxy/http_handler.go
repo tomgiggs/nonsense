@@ -3,17 +3,20 @@ package proxy
 import (
 	"context"
 	"encoding/json"
+	"fmt"
+	"github.com/afex/hystrix-go/hystrix"
 	"github.com/bitly/go-simplejson"
 	"github.com/gin-gonic/gin"
 	"github.com/golang/protobuf/proto"
 	"github.com/gorilla/websocket"
 	"google.golang.org/grpc/codes"
 	"google.golang.org/grpc/status"
+	"log"
 	"net/http"
 	"nonsense/internal/config"
 	"nonsense/internal/global"
 	"nonsense/pkg/common"
-	pb "nonsense/pkg/proto"
+	"nonsense/pkg/proto"
 	"strconv"
 )
 
@@ -79,11 +82,13 @@ func PostReq(c *gin.Context,resp proto.Message,err error){
 
 type ApiServerV1 struct {
 	conf *config.Access
+	rmg *RoomManager
 
 }
 func NewApiServerV1(c *config.Access) *ApiServerV1{
 	return &ApiServerV1{
 		conf: c,
+		rmg: NewRoomManager(),
 	}
 }
 
@@ -92,9 +97,10 @@ func (v1 *ApiServerV1)InitRouter(){
 	router.GET("/login",v1.Login)//websocket收发消息处理
 	router.PUT("/user/create",v1.AddUser)
 	r1 := router.Group("/v1")
-	r1.Use(AuthMiddleWare())
+	//r1.Use(AuthMiddleWare())
 	{
 		r1.GET("/ws",v1.WsClient)//websocket收发消息处理
+		r1.GET("/rtc",v1.RtcClient)//websocket收发消息处理
 		r1.PUT("/device/register",v1.RegisterDevice)
 		r1.DELETE("/device/delete",v1.DeleteDevice)
 		r1.GET("/device/list",v1.GetDeviceList)
@@ -212,6 +218,57 @@ func (v1 *ApiServerV1)WsClient(c *gin.Context) {
 	ctx.DoConn()
 }
 
+func (v1 *ApiServerV1)RtcClient(c *gin.Context) {
+	if ! c.IsWebsocket() {
+		c.String(http.StatusOK, "====not websocket request====")
+	}
+	w,r := c.Writer,c.Request
+	upgrader := websocket.Upgrader{}
+
+	appId, _ := strconv.ParseInt(r.Header.Get(common.CtxAppId), 10, 64)
+	userId, _ := strconv.ParseInt(r.Header.Get(common.CtxUserId), 10, 64)
+	//passwd := r.Header.Get(common.CtxToken)
+	//
+	//if appId == 0 || userId == 0 || passwd == "" {
+	//	s, _ := status.FromError(common.ErrUnauthorized)
+	//	bytes, err := json.Marshal(s.Proto())
+	//	if err != nil {
+	//		common.Sugar.Error(err)
+	//		return
+	//	}
+	//	w.Write(bytes)
+	//	return
+	//}
+	//_, err := global.WsDispatch.SignIn(common.ContextWithRequstId(context.TODO()), &pb.SignInReq{
+	//	AppId:    appId,
+	//	UserId:   userId,
+	//	Passwd:    passwd,
+	//	ConnId: global.AppConfig.SrvDisc.ID,
+	//	UserIp:r.RemoteAddr,
+	//})
+	//
+	//s, _ := status.FromError(err)
+	//if s.Code() != codes.OK {
+	//	bytes, err := json.Marshal(s.Proto())
+	//	if err != nil {
+	//		common.Sugar.Error(err)
+	//		return
+	//	}
+	//	w.Write(bytes)
+	//	return
+	//}
+
+	conn, err := upgrader.Upgrade(w, r, nil)
+	if err != nil {
+		common.Sugar.Error(err)
+		return
+	}
+
+	ctx := NewRtcContext(v1.rmg,conn, appId, userId )
+	ctx.Serve()
+}
+
+
 func(v1 *ApiServerV1) RegisterDevice(c *gin.Context) {
 	body := GetPutJson(c)
 	if body ==nil {
@@ -251,6 +308,27 @@ func(v1 *ApiServerV1) GetDeviceList(c *gin.Context) {
 
 }
 
+func GetPage(w http.ResponseWriter, r *http.Request) {
+	output := make(chan bool, 1)
+	errors := hystrix.Go("get_page", func() error {
+		_, err := http.Get("https://www.baidu.com/")
+		if err == nil {
+			output <- true
+		}
+		return err
+	}, func(err2 error) error {//失败返回
+		fmt.Println("get page fail")
+		return nil
+	})
+
+	select {
+	case out := <-output:
+		log.Printf("success %v", out)// success
+	case err := <-errors:
+		log.Printf("failed %s", err)// failure
+	}
+}
+
 func(v1 *ApiServerV1) AddUser(c *gin.Context) {
 	body := GetPutJson(c)
 	if body ==nil {
@@ -274,8 +352,27 @@ func(v1 *ApiServerV1) AddUser(c *gin.Context) {
 			Extra: extra,
 		},
 	}
-	resp, err := global.WsDispatch.AddUser(common.SimpleContext(),req)
-	PostReq(c,resp,err)
+	//自定义配置
+	//hystrix.ConfigureCommand("chat_api", hystrix.CommandConfig{
+	//	Timeout:                500,
+	//	MaxConcurrentRequests:  100,
+	//	ErrorPercentThreshold:  50,
+	//	RequestVolumeThreshold: 3,
+	//	SleepWindow:            1000,
+	//})
+	hystrix.Go("add_user", func() error {
+		resp, err := global.WsDispatch.AddUser(common.SimpleContext(),req)
+		if err != nil {
+			fmt.Println("add user failed")
+			return err
+		}
+		PostReq(c,resp,err)
+		return nil
+	}, func(e error) error {
+		fmt.Println("add user failed:",e)
+		return nil
+	})
+
 
 }
 func(v1 *ApiServerV1) UpdateUser(c *gin.Context) {
